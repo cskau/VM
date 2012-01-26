@@ -40,19 +40,24 @@ structure Target_syntax
 
 structure Compiler
 = struct
-    fun translate (Source_syntax.LIT n)
-        = [Target_syntax.PUSH (Semantics.INT n)]
-      | translate (Source_syntax.OPR (rand1, rator, rand2))
-        = (translate rand1) @ (translate rand2) @ (case rator
-                                                     of Source_syntax.PLUS
-                                                        => [Target_syntax.ADD]
-                                                      | Source_syntax.MINUS
-                                                        => [Target_syntax.SUB]
-                                                      | Source_syntax.TIMES
-                                                        => [Target_syntax.MUL])
+    (* right-branch and fill acc *)
+    fun translate (Source_syntax.LIT n, acc)
+        = (Target_syntax.PUSH (Semantics.INT n)) :: acc
+      | translate (Source_syntax.OPR (rand1, rator, rand2), acc)
+        = let val acc1 = (case rator
+                           of Source_syntax.PLUS
+                              => (Target_syntax.ADD) :: acc
+                            | Source_syntax.MINUS 
+                              => (Target_syntax.SUB) :: acc
+                            | Source_syntax.TIMES
+                              => (Target_syntax.MUL) :: acc)
+              val acc2 = translate (rand2, acc1)
+          in translate (rand1, acc2)
+          end
 
+    (* Give nil (empty list) as initial accumutarion *)
     fun main ae
-        = translate ae
+        = translate (ae, nil)
   end;
 
 structure Stack
