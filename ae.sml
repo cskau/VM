@@ -83,19 +83,20 @@ structure Virtual_machine
     in 
        fun decode_execute (PUSH n, s)
            = Stack.push (n, s)
+         (* NOTE: arguments are pop'ed in reverse order *)
          | decode_execute (ADD, s)
-           = let val (Semantics.INT n1, s1) = Stack.pop s
-                 val (Semantics.INT n2, s2) = Stack.pop s1
+           = let val (Semantics.INT n2, s1) = Stack.pop s
+                 val (Semantics.INT n1, s2) = Stack.pop s1
              in Stack.push (Semantics.INT (n1 + n2), s2)
              end
          | decode_execute (SUB, s)
-           = let val (Semantics.INT n1, s1) = Stack.pop s
-                 val (Semantics.INT n2, s2) = Stack.pop s1
+           = let val (Semantics.INT n2, s1) = Stack.pop s
+                 val (Semantics.INT n1, s2) = Stack.pop s1
              in Stack.push (Semantics.INT (n1 - n2), s2)
              end
          | decode_execute (MUL, s)
-           = let val (Semantics.INT n1, s1) = Stack.pop s
-                 val (Semantics.INT n2, s2) = Stack.pop s1
+           = let val (Semantics.INT n2, s1) = Stack.pop s
+                 val (Semantics.INT n1, s2) = Stack.pop s1
              in Stack.push (Semantics.INT (n1 * n2), s2)
              end
 
@@ -115,15 +116,20 @@ structure Test
 
     local open Source_syntax
     in
-       val s1 = OPR (LIT 3, TIMES, OPR (LIT 2, PLUS, LIT 4))
+      (* Test case including all basic operators *)
+      val s1 = OPR (LIT 3, TIMES, OPR
+                                  (LIT 2, PLUS, OPR (LIT 8, MINUS, LIT 4)))
     end
+    (* run expr. through interpreter *)
     val v1 = Interpreter.main s1
+    (* compile and run expr. on vm *)
     val t1 = Compiler.main s1
     val w1 = (case Virtual_machine.main t1
                 of (w1, nil)
                    => w1
                  | (w1, _)
                    => raise RUN_TIME_ERROR)
+    (* compare results from compiler+VM and interpreter *)
     val z1 = if v1 = w1
              then ()
              else raise RUN_TIME_ERROR
