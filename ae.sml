@@ -6,7 +6,7 @@ structure Source_syntax =
 struct
     datatype rator = PLUS | MINUS | TIMES
     datatype expression = LIT of int
-			| OPR of expression * rator * expression
+                        | OPR of expression * rator * expression
   end;
 
 structure Semantics
@@ -17,19 +17,19 @@ structure Semantics
 structure Interpreter
 = struct
     fun apply (Source_syntax.PLUS, Semantics.INT n1, Semantics.INT n2)
-	= Semantics.INT (n1 + n2)
+        = Semantics.INT (n1 + n2)
       | apply (Source_syntax.MINUS, Semantics.INT n1, Semantics.INT n2)
-	= Semantics.INT (n1 - n2)
+        = Semantics.INT (n1 - n2)
       | apply (Source_syntax.TIMES, Semantics.INT n1, Semantics.INT n2)
-	= Semantics.INT (n1 * n2)
+        = Semantics.INT (n1 * n2)
 
     fun eval (Source_syntax.LIT n)
-	= Semantics.INT n
+        = Semantics.INT n
       | eval (Source_syntax.OPR (rand1, rator, rand2))
-	= apply (rator, eval rand1, eval rand2)
+        = apply (rator, eval rand1, eval rand2)
 
     fun main ae
-	= eval ae
+      = eval ae
   end;
 
 structure Target_syntax
@@ -41,15 +41,15 @@ structure Target_syntax
 structure Compiler
 = struct
     fun translate (Source_syntax.LIT n)
-	= [Target_syntax.PUSH (Semantics.INT n)]
+        = [Target_syntax.PUSH (Semantics.INT n)]
       | translate (Source_syntax.OPR (rand1, rator, rand2))
-	= (translate rand1) @ (translate rand2) @ (case rator
-						     of Source_syntax.PLUS
-							=> [Target_syntax.ADD]
-						      | Source_syntax.MINUS
-							=> [Target_syntax.SUB]
-						      | Source_syntax.TIMES
-							=> [Target_syntax.MUL])
+        = (translate rand1) @ (translate rand2) @ (case rator
+                                                     of Source_syntax.PLUS
+                                                        => [Target_syntax.ADD]
+                                                      | Source_syntax.MINUS
+                                                        => [Target_syntax.SUB]
+                                                      | Source_syntax.TIMES
+                                                        => [Target_syntax.MUL])
 
     fun main ae
         = translate ae
@@ -64,17 +64,17 @@ structure Stack
     val empty_stack = nil
 
     fun is_empty nil
-	= true
+        = true
       | is_empty (_ :: _)
-	= false
+        = false
 
     fun push (x, xs)
-	= x :: xs
+        = x :: xs
 
     fun pop nil
-	= raise EMPTY_STACK
+        = raise EMPTY_STACK
       | pop (x :: xs)
-	= (x, xs)
+        = (x, xs)
   end;
 
 structure Virtual_machine
@@ -82,27 +82,27 @@ structure Virtual_machine
     local open Target_syntax
     in 
        fun decode_execute (PUSH n, s)
-	   = Stack.push (n, s)
-	 | decode_execute (ADD, s)
-	   = let val (Semantics.INT n1, s1) = Stack.pop s
-		 val (Semantics.INT n2, s2) = Stack.pop s1
-	     in Stack.push (Semantics.INT (n1 + n2), s2)
-	     end
-	 | decode_execute (SUB, s)
-	   = let val (Semantics.INT n1, s1) = Stack.pop s
-		 val (Semantics.INT n2, s2) = Stack.pop s1
-	     in Stack.push (Semantics.INT (n1 - n2), s2)
-	     end
-	 | decode_execute (MUL, s)
-	   = let val (Semantics.INT n1, s1) = Stack.pop s
-		 val (Semantics.INT n2, s2) = Stack.pop s1
-	     in Stack.push (Semantics.INT (n1 * n2), s2)
-	     end
+           = Stack.push (n, s)
+         | decode_execute (ADD, s)
+           = let val (Semantics.INT n1, s1) = Stack.pop s
+                 val (Semantics.INT n2, s2) = Stack.pop s1
+             in Stack.push (Semantics.INT (n1 + n2), s2)
+             end
+         | decode_execute (SUB, s)
+           = let val (Semantics.INT n1, s1) = Stack.pop s
+                 val (Semantics.INT n2, s2) = Stack.pop s1
+             in Stack.push (Semantics.INT (n1 - n2), s2)
+             end
+         | decode_execute (MUL, s)
+           = let val (Semantics.INT n1, s1) = Stack.pop s
+                 val (Semantics.INT n2, s2) = Stack.pop s1
+             in Stack.push (Semantics.INT (n1 * n2), s2)
+             end
 
        fun loop (nil, s)
-	   = Stack.pop s
-	 | loop (i :: is, s)
-	   = loop (is, decode_execute (i, s))
+           = Stack.pop s
+         | loop (i :: is, s)
+           = loop (is, decode_execute (i, s))
     end
 
     fun main p
@@ -120,13 +120,13 @@ structure Test
     val v1 = Interpreter.main s1
     val t1 = Compiler.main s1
     val w1 = (case Virtual_machine.main t1
-		of (w1, nil)
-		   => w1
-		 | (w1, _)
-		   => raise RUN_TIME_ERROR)
+                of (w1, nil)
+                   => w1
+                 | (w1, _)
+                   => raise RUN_TIME_ERROR)
     val z1 = if v1 = w1
-	     then ()
-	     else raise RUN_TIME_ERROR
+             then ()
+             else raise RUN_TIME_ERROR
   end;
 
 (* ********** *)
@@ -182,9 +182,9 @@ structure Source_syntax
 = struct
     datatype rator = PLUS | MINUS | TIMES | EQUAL
     datatype lit = LIT_INT of int
-		 | LIT_BOOL of bool
+         | LIT_BOOL of bool
     datatype expression = LIT of lit
-			| OPR of expression * rator * expression
+            | OPR of expression * rator * expression
   end;
 
    Then extend the interpreter, the compiler, and the virtual machine.
