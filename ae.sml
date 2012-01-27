@@ -4,7 +4,7 @@
 
 structure Source_syntax = 
 struct
-    datatype rator = PLUS | MINUS | TIMES
+    datatype rator = PLUS | MINUS | TIMES | DIVIDE
     datatype expression = LIT of int
                         | OPR of expression * rator * expression
   end;
@@ -22,6 +22,8 @@ structure Interpreter
         = Semantics.INT (n1 - n2)
       | apply (Source_syntax.TIMES, Semantics.INT n1, Semantics.INT n2)
         = Semantics.INT (n1 * n2)
+      | apply (Source_syntax.DIVIDE, Semantics.INT n1, Semantics.INT n2)
+        = Semantics.INT (n1 div n2)
 
     fun eval (Source_syntax.LIT n)
         = Semantics.INT n
@@ -34,7 +36,7 @@ structure Interpreter
 
 structure Target_syntax
 = struct
-    datatype instruction = PUSH of Semantics.value | ADD | SUB | MUL
+    datatype instruction = PUSH of Semantics.value | ADD | SUB | MUL | DIV
     type program = instruction list
   end;
 
@@ -50,7 +52,9 @@ structure Compiler
                             | Source_syntax.MINUS 
                               => (Target_syntax.SUB) :: acc
                             | Source_syntax.TIMES
-                              => (Target_syntax.MUL) :: acc)
+                              => (Target_syntax.MUL) :: acc
+                            | Source_syntax.DIVIDE
+                              => (Target_syntax.DIV) :: acc)
               val acc2 = translate (rand2, acc1)
           in translate (rand1, acc2)
           end
@@ -104,6 +108,11 @@ structure Virtual_machine
                  val (Semantics.INT n1, s2) = Stack.pop s1
              in Stack.push (Semantics.INT (n1 * n2), s2)
              end
+         | decode_execute (DIV, s)
+           = let val (Semantics.INT n2, s1) = Stack.pop s
+                 val (Semantics.INT n1, s2) = Stack.pop s1
+             in Stack.push (Semantics.INT (n1 div n2), s2)
+             end
 
        fun loop (nil, s)
            = Stack.pop s
@@ -122,7 +131,7 @@ structure Test
     local open Source_syntax
     in
       (* Test case including all basic operators *)
-      val s1 = OPR (LIT 3, TIMES, OPR
+      val s1 = OPR (LIT 3, DIVIDE, OPR
                                   (LIT 2, PLUS, OPR (LIT 8, MINUS, LIT 4)))
     end
     (* run expr. through interpreter *)
