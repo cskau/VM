@@ -7,6 +7,7 @@ struct
     datatype rator = PLUS | MINUS | TIMES | DIVIDE
     datatype expression = LIT of int
                         | OPR of expression * rator * expression
+                        | IF0 of expression * expression * expression
   end;
 
 structure Semantics
@@ -29,6 +30,10 @@ structure Interpreter
         = Semantics.INT n
       | eval (Source_syntax.OPR (rand1, rator, rand2))
         = apply (rator, eval rand1, eval rand2)
+      | eval (Source_syntax.IF0 (v, e1, e2))
+        = if (eval v) = Semantics.INT 0
+             then eval e1
+             else eval e2
 
     fun main ae
       = eval ae
@@ -36,7 +41,9 @@ structure Interpreter
 
 structure Target_syntax
 = struct
-    datatype instruction = PUSH of Semantics.value | ADD | SUB | MUL | DIV
+    datatype instruction = PUSH of Semantics.value 
+                         | ADD | SUB | MUL | DIV
+                         | IF0
     type program = instruction list
   end;
 
@@ -128,25 +135,22 @@ structure Test
 = struct
     exception RUN_TIME_ERROR
 
+    fun test tc
+    (* compare results from compiler+VM and interpreter *)
+      = if (Interpreter.main tc) = (case Virtual_machine.main (Compiler.main tc)
+          of (w1, nil)
+              => w1
+           | (w1, _)
+              => raise RUN_TIME_ERROR)
+      then ()
+      else raise RUN_TIME_ERROR
+
     local open Source_syntax
     in
-      (* Test case including all basic operators *)
-      val s1 = OPR (LIT 3, DIVIDE, OPR
-                                  (LIT 2, PLUS, OPR (LIT 8, MINUS, LIT 4)))
+      val tc1 = test (OPR (LIT 3, TIMES, OPR (LIT 2, PLUS, LIT 4)))
+      val tc2 = test (OPR (LIT 3, TIMES, OPR (LIT 4, MINUS, LIT 2)))
+      val tc3 = test (OPR (LIT 6, DIVIDE, OPR (LIT 2, PLUS, LIT 4)))
     end
-    (* run expr. through interpreter *)
-    val v1 = Interpreter.main s1
-    (* compile and run expr. on vm *)
-    val t1 = Compiler.main s1
-    val w1 = (case Virtual_machine.main t1
-                of (w1, nil)
-                   => w1
-                 | (w1, _)
-                   => raise RUN_TIME_ERROR)
-    (* compare results from compiler+VM and interpreter *)
-    val z1 = if v1 = w1
-             then ()
-             else raise RUN_TIME_ERROR
   end;
 
 (* ********** *)
