@@ -135,13 +135,14 @@ structure Test
 = struct
     exception RUN_TIME_ERROR
 
-    fun test tc
     (* compare results from compiler+VM and interpreter *)
-      = if (Interpreter.main tc) = (case Virtual_machine.main (Compiler.main tc)
-          of (w1, nil)
-              => w1
-           | (w1, _)
-              => raise RUN_TIME_ERROR)
+    fun test tc
+      = if ((Interpreter.main tc) = 
+            (case Virtual_machine.main (Compiler.main tc)
+               of (w1, nil)
+                  => w1
+                | (w1, _)
+                  => raise RUN_TIME_ERROR))
       then ()
       else raise RUN_TIME_ERROR
 
