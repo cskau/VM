@@ -4,15 +4,20 @@
 
 structure Source_syntax = 
 struct
-    datatype rator = PLUS | MINUS | TIMES | DIVIDE
-    datatype expression = LIT of int
+    datatype rator = PLUS | MINUS | TIMES | DIVIDE | EQUAL
+    datatype lit = LIT_INT of int
+                 | LIT_BOOL of bool
+    datatype expression = LIT of lit
                         | OPR of expression * rator * expression
                         | IF0 of expression * expression * expression
   end;
 
 structure Semantics
 = struct
+    exception TYPE_ERROR
+
     datatype value = INT of int
+                   | BOOL of bool
   end;
 
 structure Interpreter
@@ -25,9 +30,15 @@ structure Interpreter
         = Semantics.INT (n1 * n2)
       | apply (Source_syntax.DIVIDE, Semantics.INT n1, Semantics.INT n2)
         = Semantics.INT (n1 div n2)
+      | apply (Source_syntax.EQUAL, Semantics.INT n1, Semantics.INT n2)
+        = Semantics.BOOL (n1 = n2)
+      | apply (Source_syntax.EQUAL, Semantics.BOOL n1, Semantics.BOOL n2)
+        = Semantics.BOOL (n1 = n2)
 
-    fun eval (Source_syntax.LIT n)
+    fun eval (Source_syntax.LIT (Source_syntax.LIT_INT n))
         = Semantics.INT n
+      | eval (Source_syntax.LIT (Source_syntax.LIT_BOOL n))
+        = Semantics.BOOL n
       | eval (Source_syntax.OPR (rand1, rator, rand2))
         = apply (rator, eval rand1, eval rand2)
       | eval (Source_syntax.IF0 (v, e1, e2))
@@ -43,7 +54,7 @@ structure Target_syntax
 = struct
     (* TODO: Make label IDs a seperate, unique type *)
     datatype instruction = PUSH of Semantics.value
-                         | ADD | SUB | MUL | DIV
+                         | ADD | SUB | MUL | DIV | CMP
                          | JMP of Semantics.value
                          | IF0 of Semantics.value
                          | LBL of Semantics.value
@@ -57,8 +68,10 @@ structure Compiler
         = (Semantics.INT (l + 1))
 
     (* right-branch and fill acc *)
-    fun translate (Source_syntax.LIT n, acc, l)
+    fun translate (Source_syntax.LIT (Source_syntax.LIT_INT n), acc, l)
         = (Target_syntax.PUSH (Semantics.INT n)) :: acc
+      | translate (Source_syntax.LIT (Source_syntax.LIT_BOOL n), acc, l)
+        = (Target_syntax.PUSH (Semantics.BOOL n)) :: acc
       | translate (Source_syntax.OPR (rand1, rator, rand2), acc, l)
         = let val acc1 = (case rator
                            of Source_syntax.PLUS
@@ -68,7 +81,9 @@ structure Compiler
                             | Source_syntax.TIMES
                               => (Target_syntax.MUL) :: acc
                             | Source_syntax.DIVIDE
-                              => (Target_syntax.DIV) :: acc)
+                              => (Target_syntax.DIV) :: acc
+                            | Source_syntax.EQUAL
+                              => (Target_syntax.CMP) :: acc)
               val acc2 = translate (rand2, acc1, l)
           in translate (rand1, acc2, l)
           end
@@ -148,6 +163,11 @@ structure Virtual_machine
                  val (Semantics.INT n1, s2) = Stack.pop s1
              in (is, Stack.push (Semantics.INT (n1 div n2), s2))
              end
+         | decode_execute (CMP, s, is)
+           = let val (Semantics.INT n2, s1) = Stack.pop s
+                 val (Semantics.INT n1, s2) = Stack.pop s1
+             in (is, Stack.push (Semantics.BOOL (n1 = n2), s2))
+             end
          | decode_execute (LBL n, s, is)
            = (is, s)
          | decode_execute (JMP n, s, i :: is)
@@ -190,13 +210,29 @@ structure Test
 
     local open Source_syntax
     in
-      val tc1 = test (OPR (LIT 3, TIMES, OPR (LIT 2, PLUS, LIT 4)))
-      val tc2 = test (OPR (LIT 3, TIMES, OPR (LIT 4, MINUS, LIT 2)))
-      val tc3 = test (OPR (LIT 6, DIVIDE, OPR (LIT 2, PLUS, LIT 4)))
-      val tc4 = test (IF0 (LIT 0, LIT 1, LIT 2))
-      val tc5 = test (IF0 (OPR (LIT ~1, MINUS, LIT ~1),
-                           OPR (LIT 2, PLUS, LIT 4),
-                           OPR (LIT 2, TIMES, LIT 4)))
+      val tc1 = test (OPR (LIT (LIT_INT 3),
+                           TIMES,
+                           OPR (LIT (LIT_INT 2),
+                                PLUS,
+                                LIT (LIT_INT 4))))
+
+      val tc2 = test (OPR (LIT (LIT_INT 3),
+                           TIMES,
+                           OPR (LIT (LIT_INT 4), MINUS, LIT (LIT_INT 2))))
+
+      val tc3 = test (OPR (LIT (LIT_INT 6),
+                           DIVIDE,
+                           OPR (LIT (LIT_INT 2), PLUS, LIT (LIT_INT 4))))
+
+      val tc4 = test (IF0 (LIT (LIT_INT 0), LIT (LIT_INT 1), LIT (LIT_INT 2)))
+
+      val tc5 = test (IF0 (OPR (LIT (LIT_INT ~1), MINUS, LIT (LIT_INT ~1)),
+                           OPR (LIT (LIT_INT 2), PLUS, LIT (LIT_INT 4)),
+                           OPR (LIT (LIT_INT 2), TIMES, LIT (LIT_INT 4))))
+
+      val tc6 = test (LIT (LIT_BOOL true))
+
+      val tc7 = test (OPR (LIT (LIT_INT ~1), EQUAL, LIT (LIT_INT 1)))
     end
   end;
 
