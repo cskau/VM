@@ -41,34 +41,54 @@ structure Interpreter
 
 structure Target_syntax
 = struct
-    datatype instruction = PUSH of Semantics.value 
+    (* TODO: Make label IDs a seperate, unique type *)
+    datatype instruction = PUSH of Semantics.value
                          | ADD | SUB | MUL | DIV
-                         | IF0
+                         | JMP of Semantics.value
+                         | IF0 of Semantics.value
+                         | LBL of Semantics.value
     type program = instruction list
   end;
 
 structure Compiler
 = struct
+    (* very simple "next label" generator *)
+    fun genlbl (Semantics.INT l)
+        = (Semantics.INT (l + 1))
+
     (* right-branch and fill acc *)
-    fun translate (Source_syntax.LIT n, acc)
+    fun translate (Source_syntax.LIT n, acc, l)
         = (Target_syntax.PUSH (Semantics.INT n)) :: acc
-      | translate (Source_syntax.OPR (rand1, rator, rand2), acc)
+      | translate (Source_syntax.OPR (rand1, rator, rand2), acc, l)
         = let val acc1 = (case rator
                            of Source_syntax.PLUS
                               => (Target_syntax.ADD) :: acc
-                            | Source_syntax.MINUS 
+                            | Source_syntax.MINUS
                               => (Target_syntax.SUB) :: acc
                             | Source_syntax.TIMES
                               => (Target_syntax.MUL) :: acc
                             | Source_syntax.DIVIDE
                               => (Target_syntax.DIV) :: acc)
-              val acc2 = translate (rand2, acc1)
-          in translate (rand1, acc2)
+              val acc2 = translate (rand2, acc1, l)
+          in translate (rand1, acc2, l)
+          end
+      | translate (Source_syntax.IF0 (v, e1, e2), acc, l)
+        (* translation: IF0 LBL1, e2, JMP LBL2, LBL1, e1, LBL2 *)
+        = let val l1 = (genlbl l)
+              val l2 = (genlbl l1)
+              val acc1 = (Target_syntax.LBL l2) :: acc
+              val acc2 = translate (e1, acc1, l2)
+              val acc3 = (Target_syntax.LBL l1) :: acc2
+              val acc4 = (Target_syntax.JMP l2) :: acc3
+              val acc5 = translate (e2, acc4, l2)
+              val acc6 = (Target_syntax.IF0 l1) :: acc5
+          in
+              translate (v, acc6, l2)
           end
 
-    (* Give nil (empty list) as initial accumutarion *)
+    (* Give nil (empty list) as initial accumulation *)
     fun main ae
-        = translate (ae, nil)
+        = translate (ae, nil, (Semantics.INT 0))
   end;
 
 structure Stack
@@ -96,35 +116,54 @@ structure Stack
 structure Virtual_machine
 = struct
     local open Target_syntax
-    in 
-       fun decode_execute (PUSH n, s)
-           = Stack.push (n, s)
+    in
+       fun jump (n, s, i :: is)
+           = if (LBL n) = i
+             then (is, s)
+             (* loop until we find the label we're looking for *)
+             else (jump (n, s, is))
+         | jump (n, s, nil)
+           = (nil, s)
+
+       fun decode_execute (PUSH n, s, is)
+           = (is, Stack.push (n, s))
          (* NOTE: arguments are pop'ed in reverse order *)
-         | decode_execute (ADD, s)
+         | decode_execute (ADD, s, is)
            = let val (Semantics.INT n2, s1) = Stack.pop s
                  val (Semantics.INT n1, s2) = Stack.pop s1
-             in Stack.push (Semantics.INT (n1 + n2), s2)
+             in (is, Stack.push (Semantics.INT (n1 + n2), s2))
              end
-         | decode_execute (SUB, s)
+         | decode_execute (SUB, s, is)
            = let val (Semantics.INT n2, s1) = Stack.pop s
                  val (Semantics.INT n1, s2) = Stack.pop s1
-             in Stack.push (Semantics.INT (n1 - n2), s2)
+             in (is, Stack.push (Semantics.INT (n1 - n2), s2))
              end
-         | decode_execute (MUL, s)
+         | decode_execute (MUL, s, is)
            = let val (Semantics.INT n2, s1) = Stack.pop s
                  val (Semantics.INT n1, s2) = Stack.pop s1
-             in Stack.push (Semantics.INT (n1 * n2), s2)
+             in (is, Stack.push (Semantics.INT (n1 * n2), s2))
              end
-         | decode_execute (DIV, s)
+         | decode_execute (DIV, s, is)
            = let val (Semantics.INT n2, s1) = Stack.pop s
                  val (Semantics.INT n1, s2) = Stack.pop s1
-             in Stack.push (Semantics.INT (n1 div n2), s2)
+             in (is, Stack.push (Semantics.INT (n1 div n2), s2))
+             end
+         | decode_execute (LBL n, s, is)
+           = (is, s)
+         | decode_execute (JMP n, s, i :: is)
+           = (jump (n, s, is))
+         | decode_execute (IF0 n, s, i :: is)
+           = let val (Semantics.INT v, s1) = Stack.pop s
+             in
+               if v = 0
+               then (jump (n, s1, is))
+               else (i :: is, s1)
              end
 
        fun loop (nil, s)
            = Stack.pop s
          | loop (i :: is, s)
-           = loop (is, decode_execute (i, s))
+           = loop (decode_execute (i, s, is))
     end
 
     fun main p
@@ -137,20 +176,27 @@ structure Test
 
     (* compare results from compiler+VM and interpreter *)
     fun test tc
-      = if ((Interpreter.main tc) = 
-            (case Virtual_machine.main (Compiler.main tc)
-               of (w1, nil)
-                  => w1
-                | (w1, _)
-                  => raise RUN_TIME_ERROR))
-      then ()
-      else raise RUN_TIME_ERROR
+      = let val ir = (Interpreter.main tc)
+            val vmr = (case Virtual_machine.main (Compiler.main tc)
+                         of (w1, nil)
+                            => w1
+                          | (w1, _)
+                            => raise RUN_TIME_ERROR)
+        in
+          if ir = vmr
+          then (ir, vmr)
+          else raise RUN_TIME_ERROR
+        end
 
     local open Source_syntax
     in
       val tc1 = test (OPR (LIT 3, TIMES, OPR (LIT 2, PLUS, LIT 4)))
       val tc2 = test (OPR (LIT 3, TIMES, OPR (LIT 4, MINUS, LIT 2)))
       val tc3 = test (OPR (LIT 6, DIVIDE, OPR (LIT 2, PLUS, LIT 4)))
+      val tc4 = test (IF0 (LIT 0, LIT 1, LIT 2))
+      val tc5 = test (IF0 (OPR (LIT ~1, MINUS, LIT ~1),
+                           OPR (LIT 2, PLUS, LIT 4),
+                           OPR (LIT 2, TIMES, LIT 4)))
     end
   end;
 
@@ -207,9 +253,9 @@ structure Source_syntax
 = struct
     datatype rator = PLUS | MINUS | TIMES | EQUAL
     datatype lit = LIT_INT of int
-         | LIT_BOOL of bool
+                 | LIT_BOOL of bool
     datatype expression = LIT of lit
-            | OPR of expression * rator * expression
+                        | OPR of expression * rator * expression
   end;
 
    Then extend the interpreter, the compiler, and the virtual machine.
