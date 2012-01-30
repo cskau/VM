@@ -10,6 +10,7 @@ struct
     datatype expression = LIT of lit
                         | OPR of expression * rator * expression
                         | IF0 of expression * expression * expression
+                        | IFT of expression * expression * expression
   end;
 
 structure Semantics
@@ -45,6 +46,10 @@ structure Interpreter
         = if (eval v) = Semantics.INT 0
              then eval e1
              else eval e2
+      | eval (Source_syntax.IFT (v, e1, e2))
+        = if (eval v) = Semantics.BOOL true
+             then eval e1
+             else eval e2
 
     fun main ae
       = eval ae
@@ -55,9 +60,10 @@ structure Target_syntax
     (* TODO: Make label IDs a seperate, unique type *)
     datatype instruction = PUSH of Semantics.value
                          | ADD | SUB | MUL | DIV | CMP
+                         | LBL of Semantics.value
                          | JMP of Semantics.value
                          | IF0 of Semantics.value
-                         | LBL of Semantics.value
+                         | IFT of Semantics.value
     type program = instruction list
   end;
 
@@ -88,7 +94,7 @@ structure Compiler
           in translate (rand1, acc2, l)
           end
       | translate (Source_syntax.IF0 (v, e1, e2), acc, l)
-        (* translation: IF0 LBL1, e2, JMP LBL2, LBL1, e1, LBL2 *)
+        (* translation: v, IF0 LBL1, e2, JMP LBL2, LBL1, e1, LBL2 *)
         = let val l1 = (genlbl l)
               val l2 = (genlbl l1)
               val acc1 = (Target_syntax.LBL l2) :: acc
@@ -97,11 +103,22 @@ structure Compiler
               val acc4 = (Target_syntax.JMP l2) :: acc3
               val acc5 = translate (e2, acc4, l2)
               val acc6 = (Target_syntax.IF0 l1) :: acc5
-          in
-              translate (v, acc6, l2)
+          in translate (v, acc6, l2)
+          end
+      | translate (Source_syntax.IFT (v, e1, e2), acc, l)
+        (* translation: v, IFT LBL1, e2, JMP LBL2, LBL1, e1, LBL2 *)
+        = let val l1 = (genlbl l)
+              val l2 = (genlbl l1)
+              val acc1 = (Target_syntax.LBL l2) :: acc
+              val acc2 = translate (e1, acc1, l2)
+              val acc3 = (Target_syntax.LBL l1) :: acc2
+              val acc4 = (Target_syntax.JMP l2) :: acc3
+              val acc5 = translate (e2, acc4, l2)
+              val acc6 = (Target_syntax.IFT l1) :: acc5
+          in translate (v, acc6, l2)
           end
 
-    (* Give nil (empty list) as initial accumulation *)
+    (* Give nil (empty list) as initial accumulation, 0 as first label *)
     fun main ae
         = translate (ae, nil, (Semantics.INT 0))
   end;
@@ -179,6 +196,13 @@ structure Virtual_machine
                then (jump (n, s1, is))
                else (i :: is, s1)
              end
+         | decode_execute (IFT n, s, i :: is)
+           = let val (Semantics.BOOL v, s1) = Stack.pop s
+             in
+               if v = true
+               then (jump (n, s1, is))
+               else (i :: is, s1)
+             end
 
        fun loop (nil, s)
            = Stack.pop s
@@ -233,6 +257,10 @@ structure Test
       val tc6 = test (LIT (LIT_BOOL true))
 
       val tc7 = test (OPR (LIT (LIT_INT ~1), EQUAL, LIT (LIT_INT 1)))
+
+      val tc8 = test (IFT (OPR (LIT (LIT_INT ~1), EQUAL, LIT (LIT_INT ~1)),
+                           OPR (LIT (LIT_INT 2), PLUS, LIT (LIT_INT 4)),
+                           OPR (LIT (LIT_INT 2), TIMES, LIT (LIT_INT 4))))
     end
   end;
 
