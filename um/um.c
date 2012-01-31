@@ -6,8 +6,8 @@
     http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
 */
 
-#define CODE_BUF_SIZE 40000000
-#define MEMO_BUF_SIZE 100000
+#define CODE_BUF_SIZE 32000000
+#define MEMO_BUF_SIZE 32000000
 
 /*
                           A     C
@@ -115,14 +115,15 @@ unsigned int * LoadPlatterArrayOrDie(char *fname) {
 
 void SpinCycle(unsigned int *pa) {
   unsigned int regs[] = {0, 0, 0, 0, 0, 0, 0, 0};
-  unsigned int *collection[MEMO_BUF_SIZE];
+  unsigned int **collection;
   unsigned int ip = 0, pp = 0, pp_lb = 0;
 
   unsigned int byte_code, op;
   unsigned int a, b, c;
   unsigned char ch;
-  unsigned int last_ldp;
+  unsigned int last_ldp = 0;
 
+  collection = (unsigned int *) calloc(MEMO_BUF_SIZE, sizeof(unsigned int *));
   collection[0] = pa;
 
   while (ip <= collection[0][0]) {
@@ -174,7 +175,7 @@ void SpinCycle(unsigned int *pa) {
         while (collection[pp_lb] != NULL) {
           pp_lb++;
         }
-        pp = pp_lb++;
+        pp = pp_lb;
         collection[pp] = calloc((regs[c] + 1), sizeof(unsigned int));
         collection[pp][0] = regs[c];
         regs[b] = pp;
@@ -221,6 +222,8 @@ void SpinCycle(unsigned int *pa) {
     }
     ip++;
   }
+
+  free(collection);
 }
 
 int main(int argc, char *argv[]) {
