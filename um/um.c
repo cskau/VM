@@ -64,14 +64,6 @@
 #define OP_LDP 0xC0000000
 #define OP_ORT 0xD0000000
 
-typedef struct {
-  unsigned int reg[8];
-  unsigned int ip;
-  unsigned int pp;
-  unsigned int * collection[MEMO_BUF_SIZE];
-  unsigned int pp_lb;
-} UniversalMachine;
-
 /*
   When reading programs from legacy "unsigned 8-bit character"
   scrolls, a series of four bytes A,B,C,D should be interpreted with
@@ -121,41 +113,57 @@ unsigned int * LoadPlatterArrayOrDie(char *fname) {
   return pa;
 }
 
-void SpinCycle(UniversalMachine * um) {
-  unsigned int byte_code, op, reg_a, reg_b, reg_c;
+void SpinCycle(unsigned int *pa) {
+  unsigned int regs[] = {0, 0, 0, 0, 0, 0, 0, 0};
+  unsigned int *collection[MEMO_BUF_SIZE];
+  unsigned int ip = 0, pp = 0, pp_lb = 0;
+
+  unsigned int byte_code, op;
+  unsigned int a, b, c;
   unsigned char ch;
-  unsigned int *zero_arr = um->collection[0];
-  unsigned int *regs = um->reg;
-  unsigned int ip = um->ip;
-  while (ip <= zero_arr[0]) {
-    byte_code = zero_arr[ip + 1];
+  unsigned int last_ldp;
+
+  collection[0] = pa;
+
+  while (ip <= collection[0][0]) {
+    byte_code = collection[0][ip + 1];
     op = (byte_code & OP_MASK);
-    reg_a = (byte_code & RA_MASK) >> 6;
-    reg_b = (byte_code & RB_MASK) >> 3;
-    reg_c = (byte_code & RC_MASK);
+    a = (byte_code & RA_MASK) >> 6;
+    b = (byte_code & RB_MASK) >> 3;
+    c = (byte_code & RC_MASK);
     switch (op) {
       case OP_IFM:
-        if (regs[reg_c] != 0) {
-          regs[reg_a] = regs[reg_b];
+        if (regs[c] != 0) {
+          regs[a] = regs[b];
         }
         break;
       case OP_ARI:
-        regs[reg_a] = um->collection[regs[reg_b]][regs[reg_c] + 1];
+        regs[a] = collection[regs[b]][regs[c] + 1];
         break;
       case OP_ARA:
-        um->collection[regs[reg_a]][regs[reg_b] + 1] = regs[reg_c];
+        /* Copy-on-write */
+        if (last_ldp != 0) {
+          collection[0] = malloc(
+              ((collection[0][0] + 1) * sizeof(unsigned int)));
+          memcpy(
+              collection[0],
+              collection[last_ldp],
+              (collection[last_ldp][0] + 1) * sizeof(unsigned int));
+          last_ldp = 0;
+        }
+        collection[regs[a]][regs[b] + 1] = regs[c];
         break;
       case OP_ADD:
-        regs[reg_a] = regs[reg_b] + regs[reg_c];
+        regs[a] = regs[b] + regs[c];
         break;
       case OP_MUL:
-        regs[reg_a] = regs[reg_b] * regs[reg_c];
+        regs[a] = regs[b] * regs[c];
         break;
       case OP_DIV:
-        regs[reg_a] = regs[reg_b] / regs[reg_c];
+        regs[a] = regs[b] / regs[c];
         break;
       case OP_NOT:
-        regs[reg_a] = ~(regs[reg_b] & regs[reg_c]);
+        regs[a] = ~(regs[b] & regs[c]);
         break;
       case OP_HLT:
         return;
@@ -163,42 +171,46 @@ void SpinCycle(UniversalMachine * um) {
       case OP_ALC:
         /* TODO: implement more robust/less naive alloc and free */
         /* Search from last known lower bound on free cell */
-        while (um->collection[um->pp_lb] != NULL) {
-          um->pp_lb++;
+        while (collection[pp_lb] != NULL) {
+          pp_lb++;
         }
-        um->pp = um->pp_lb++;
-        um->collection[um->pp] = calloc(
-            (regs[reg_c] + 1),
-            sizeof(unsigned int));
-        um->collection[um->pp][0] = regs[reg_c];
-        regs[reg_b] = um->pp;
+        pp = pp_lb++;
+        collection[pp] = calloc((regs[c] + 1), sizeof(unsigned int));
+        collection[pp][0] = regs[c];
+        regs[b] = pp;
         break;
       case OP_ABD:
-        free(um->collection[regs[reg_c]]);
-        um->collection[regs[reg_c]] = NULL;
-        /* Keep track of known lower bound */
-        if (regs[reg_c] < um->pp_lb) {
-          um->pp_lb = regs[reg_c];
+        /* make sure we're not shadowing it */
+        if (regs[c] != last_ldp) {
+          free(collection[regs[c]]);
+        } else {
+          /* this memory is now exclusively collection[0] */
+          last_ldp = 0;
         }
-        if (regs[reg_c] == um->pp) {
-          um->pp--;
+        collection[regs[c]] = NULL;
+        /* Keep track of known lower bound */
+        if (regs[c] < pp_lb) {
+          pp_lb = regs[c];
+        }
+        if (regs[c] == pp) {
+          pp--;
         }
         break;
       case OP_OUT:
-        putchar((unsigned char)regs[reg_c]);
+        putchar((unsigned char)regs[c]);
         break;
       case OP_INP:
-        regs[reg_c] = ((ch = getchar()) != EOF) ? ch : 0xFF;
+        regs[c] = ((ch = getchar()) != EOF) ? ch : 0xFF;
         break;
       case OP_LDP:
-        /* TODO: verify it's behaving */
-        /* TODO: also all this memcpy seems slow */
-        memcpy(
-          zero_arr,
-          um->collection[regs[reg_b]],
-          (um->collection[regs[reg_b]][0] + 1) * sizeof(unsigned int));
         /* subtract 1 since we'll increment below */
-        ip = regs[reg_c] - 1;
+        ip = regs[c] - 1;
+        /* Shadow the copied memory to speed up "copy" */
+        if (regs[b] != 0) {
+          free(collection[0]);
+          collection[0] = collection[regs[b]];
+          last_ldp = regs[b];
+        }
         break;
       case OP_ORT:
         regs[(byte_code & OA_MASK) >> 25] = (byte_code & OV_MASK);
@@ -217,15 +229,7 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
-  UniversalMachine um = {
-    {0, 0, 0, 0, 0, 0, 0, 0},
-    0,
-    0,
-    {LoadPlatterArrayOrDie(argv[1])},
-    0
-  };
-
-  SpinCycle(&um);
+  SpinCycle(LoadPlatterArrayOrDie(argv[1]));
 
   exit(0);
 }
