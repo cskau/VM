@@ -1,0 +1,16 @@
+% DAIMI-Scheme/lib/linearizer.txt -*- text -*-
+;;; Olivier Danvy <danvy@brics.dk>
+;;; October 2002
+
+----------
+
+(linearize-program p)
+where	p denotes program produced by box-program
+
+
+The idea here is
+	- to sequentialize internal computations into binding steps.
+
+----------
+
+end of "linearizer.txt"

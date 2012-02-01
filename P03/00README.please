@@ -1,0 +1,17 @@
+% 00README.please -*- text -*-
+
+This directory contains the description of the dOvs'03 project.
+
+----------
+
+You should untar the file <front-end.tar> in your private space
+with the Unix command
+
+    tar xvf /users/courses/dOvs/Project03/front-end.tar
+
+which will create a directory DAIMI-Scheme.front-end/
+containing the front-end compiler.
+
+----------
+
+% end of 00README.please

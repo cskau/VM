@@ -1,0 +1,11 @@
+(vector (null? 123)
+	(null? -123)
+	(null? "hello world")
+	(null? null?)
+	(null? (lambda (x) x))
+	(null? #t)
+	(null? 'foo)
+	(null? '(a b))
+	(null? (cons 'a (cons 'b '()))))
+
+;;; expected result: #9(#f)

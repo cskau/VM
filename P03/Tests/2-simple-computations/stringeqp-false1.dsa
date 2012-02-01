@@ -1,0 +1,8 @@
+(DAIMI-SchemeE03
+  (0 0 1)
+  ()
+  ((new-vec 2)
+   (load str "a" vec 0)
+   (load str "" vec 1)
+   (tail-call lib 21))
+  "DAIMI-Scheme compiler, 03-10-22")

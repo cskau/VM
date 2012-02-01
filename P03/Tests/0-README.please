@@ -1,0 +1,61 @@
+% Tests/0-README.please -*- text -*-
+
+This directory contains a host of DAIMI-Scheme programs to test both the
+compiler and the VM.  When necessary, each file contains an explanatory
+comment.  Otherwise, the name of the file is (supposed to be)
+self-explanatory.
+
+1-simple-values/
+    Each file contains one Scheme expression which is a value.
+
+2-simple-computations/
+    Each file contains one Scheme expression which is a simple
+    computation.
+
+3-simple-definitions/
+    Each file contains one or more Scheme definitions involving one
+    simple computation, and one simple computation.
+
+4-compound-definitions-and-computations/
+    Each file contains Scheme definitions involving compound
+    computations, and one compound computation.
+
+5-basic-programs/
+    Each file contains a basic DAIMI-Scheme program.
+
+6-advanced-programs/
+    Each file contains an advanced DAIMI-Scheme program, for instance
+    one using call/cc in a nontrivial way.
+
+Bounds/
+    This directory contains DAIMI-Scheme assembly programs that access
+    aux-vec and env-lex out of bounds. They must all result in an
+    error message when run in the vm.
+
+Misc/
+    Each file contains some program that is either interactive or has
+    implementation-dependant output.
+
+Semantic-bugs/
+    Each file contains a DAIMI-Scheme program that behaves anomalously
+    at run time, and a comment that explains the anomaly.
+
+Syntactic-bugs/
+    Each file contains a DAIMI-Scheme program that behaves anomalously
+    at compile time, and a comment that explains the anomaly.
+    (This directory is only here to test the front-end of the compiler.)
+
+----------
+
+Since DAIMI-Scheme is deprived of file-removing and file-modifying
+capabilities, all of these programs are safe to run, ie, they won't
+delete files, rename files, overwrite files, change read / write access,
+reformat your hard disk, or read sensitive information and e-mail it to
+the tax authorities.
+
+Conversely, your VM will be run from a sandbox, namely the
+<dovs@daimi.au.dk> computer account.
+
+----------
+
+end of 0-README.please

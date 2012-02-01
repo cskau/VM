@@ -1,0 +1,128 @@
+% 01project.txt  -*- text -*-
+% dOvs 2003
+
+==========
+
+The goal of the project is
+(1) to write, in Standard ML, a (back-end) compiler from a subset of
+    Scheme, DAIMI-Scheme, to byte code, and
+(2) to write, in C, a virtual machine for this byte code, including a
+    memory manager.
+
+The measure of success of the project is to compile the DAIMI-Scheme
+compiler written in DAIMI-Scheme that is supplied with the statement of
+this project.
+
+The compiler is a back-end compiler because the front-end is supplied
+with the statement of this project.
+
+==========
+
+DAIMI-Scheme is described in <02DAIMI-Scheme-source.txt>.
+
+The intermediate version of DAIMI-Scheme (ie, the output of the front-end
+of the compiler) is described in <03DAIMI-Scheme-intermediate.txt>.
+
+The byte code is described in <04DAIMI-Scheme-virtual-machine.txt>.
+
+An indicative description of DAIMI Scheme values is described in
+<05DAIMI-Scheme-values.txt>.
+
+A specification of the assembler and the binary code is available at
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.dvi
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.ps
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.pdf
+
+==========
+
+Command-line interface to the compiler and VM:
+
+Your compiler must be executable from the command line.  It should take
+the name of a .scm file and produce the corresponding .dsa file (in the
+same directory as the .scm file).  It should be runnable from any
+directory.
+
+Similarly, your VM must be executable from the command line.  It should
+take the name of a .dsb file to execute.  It should also be runnable from
+any directory.
+
+NB. We will cover in class later on how to make executable files out of
+    ML programs.
+
+==========
+
+Your VM should abort on all error conditions, and not dump cores.
+
+It should be platform independent (modulo endianness), ie, either there
+should be executable versions for various platforms (like the assembler),
+or you should specify on which architecture your VM runs.
+
+==========
+
+You are given:
+
+- A front-end compiler (ie, parser, desugarer, and boxer) written in ML.
+  This compiler takes the name of a .scm file and creates the
+  corresponding -boxed.scm file.
+  Reference: /users/courses/dOvs/Project03/DAIMI-Scheme/
+
+- A compiler (ie, parser, desugarer, boxer, linearizer, scoper,
+  factorizer, and code generator) written in DAIMI-Scheme.
+  This compiler takes the name of a .scm file and creates the
+  corresponding .dsa file.
+  Reference: /users/courses/dOvs/Project03/front-end.tar
+
+- An assembler (dsasm).
+  This compiler takes the name of a .dsa file and creates the
+  corresponding .dsb file.
+  Reference: /users/courses/dOvs/bin/
+
+- A virtual machine written in DAIMI-Scheme.
+  This VM takes the name of a .dsa file and runs the program contained in
+  this file.
+  Reference: /users/courses/dOvs/Project03/DAIMI-Scheme/
+
+- Executables for the TA's virtual machine (dsvm), which is written in C.
+  This VM takes the name of a .dsb file and runs the program contained in
+  this file.
+  Reference: /users/courses/dOvs/bin/
+
+- A large and friendly directory of DAIMI-Scheme test programs, organized
+  by increasing complexity, and including buggy programs, to stress-test
+  your compiler and VM.  (Hint: Once you have compiled the DAIMI-Scheme
+  compiler written in DAIMI-Scheme, use this compiled version on these
+  test programs.)
+  Reference: /users/courses/dOvs/Project03/Tests/
+
+If you spot any bug in either of the programs above, you will earn a
+mini-Toblerone (one per spotted bug).
+
+NB. Should there be new releases of either of the software artifacts
+    above, then the previous version would remain under another name, and
+    the new version would be available under the same name.  For example, 
+    the directory /users/courses/dOvs/Project03/DAIMI-Scheme/
+    could be renamed /users/courses/dOvs/Project03/DAIMI-Scheme.03-10-10/;
+    a new directory /users/courses/dOvs/Project03/DAIMI-Scheme/
+    would then appear.  For example, last year, there were three (3) new
+    releases of the DAIMI-Scheme compiler.
+
+==========
+
+Deadlines:
+
+- The text of the project is made available on Friday, October 10, 2003,
+  in /users/courses/dOvs/Project03/.
+
+- The deadline for the programming part of the project is Friday,
+  December 5, 2003, at 14h00.
+
+- The deadline for the report is Friday, December 12, 2003, at 14h00.
+
+If you have any question or encounter any trouble,
+contact your TA or Olivier Danvy <danvy@daimi.au.dk>.
+
+Happy hacking!
+
+==========
+
+% end of 01project.txt

@@ -1,0 +1,15 @@
+(DAIMI-SchemeE03
+  (0 1 1)
+  ((1 lambda-flat%0))
+  ((new-vec 0)
+   (load close-flat 0 tmp 0)
+   (new-vec 3)
+   (move tmp 0 vec 0)
+   (load int 2 vec 1)
+   (load int 3 vec 2)
+   (tail-call lib 39)
+
+   (label lambda-flat%0)
+   (move 0 0 res 0)
+   (return))
+  "DAIMI-Scheme compiler, 03-10-22")

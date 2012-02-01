@@ -1,0 +1,56 @@
+% bar.txt
+
+The session in the file "bar.session" should be read as follows:
+
+----------
+
+First, the DAIMI-Scheme compiler and VM are loaded.
+
+----------
+
+The file "bar.scm" contains a DAIMI-Scheme program.
+
+We compile this program with the command dump.
+The compiled program is in a file "bar.dsa".
+
+----------
+
+We rename "bar.dsa" into "bar.dsa-renamed".
+
+----------
+
+The file "bar-meta.scm" contains a DAIMI-Scheme program that
+(1) loads the DAIMI-Scheme compiler and VM, and
+(2) compiles the contents of the file "bar.scm".
+
+We (compile and) run this program with the command run.
+The compiled program is in a file "bar.dsa".
+
+----------
+
+We compare the files "bar.dsa" into "bar.dsa-renamed"
+and they are identical.
+
+----------
+
+The file "bar-meta-meta.scm" contains a DAIMI-Scheme program that
+(1) loads the DAIMI-Scheme compiler and VM, and
+(2) compiles the contents of the file "bar-meta.scm".
+
+We compile run this program with the command dump.
+The compiled program is in a file "bar-meta-meta.dsa".
+
+----------
+
+We compare the files "bar-meta-meta.dsa" into "bar-meta.dsa"
+and they only differ by one string:
+
+In "bar-meta-meta.dsa":
+    (load str "tests/Meta/bar-meta.scm" vec 0)
+
+In "bar-meta.dsa":
+    (load str "tests/Meta/bar.scm" vec 0)
+
+----------
+
+end of "bar.txt"

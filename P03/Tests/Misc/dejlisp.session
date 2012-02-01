@@ -1,0 +1,22 @@
+Petite Chez Scheme Version 6.0a
+Copyright (c) 1998 Cadence Research Systems
+
+> (load "compiler.scm")
+> (run "/users/danvy/People/dOvs/Tests/6-advanced-programs/dejlisp.scm")
+(/users/danvy/People/dOvs/Tests/6-advanced-programs/dejlisp.scm(lib.DAIMI-Scheme/standard-prelude.scm(lib.DAIMI-Scheme/boolean.scm)(lib.DAIMI-Scheme/compose.scm)(lib.DAIMI-Scheme/equal.scm)(lib.DAIMI-Scheme/list.scm)(lib.DAIMI-Scheme/member.scm)(lib.DAIMI-Scheme/cxxr.scm)(lib.DAIMI-Scheme/cxxxr.scm)(lib.DAIMI-Scheme/cxxxxr.scm)(lib.DAIMI-Scheme/cxxxxxr.scm)(lib.DAIMI-Scheme/all-the-cxr.scm)(lib.DAIMI-Scheme/map.scm)(lib.DAIMI-Scheme/for-each.scm)(lib.DAIMI-Scheme/fold.scm)(lib.DAIMI-Scheme/filter.scm)(lib.DAIMI-Scheme/integer.scm)(lib.DAIMI-Scheme/char.scm)(lib.DAIMI-Scheme/string.scm)(lib.DAIMI-Scheme/format.scm)(lib.DAIMI-Scheme/vector.scm)(lib.DAIMI-Scheme/integer-string-conversions.scm)(lib.DAIMI-Scheme/input-output.scm)(lib.DAIMI-Scheme/read.scm)(lib.DAIMI-Scheme/write.scm)(lib.DAIMI-Scheme/display.scm)(lib.DAIMI-Scheme/error.scm)(lib.DAIMI-Scheme/sort.scm)(lib.DAIMI-Scheme/associate.scm)))
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+Initializing / initialized
+
+Hello world.
+>>> (define fac (lambda (x) (if (= x 0) 1 (* x (fac (- x 1))))))
+>>> (fac 5)
+120
+>>> (exit)
+"Nice when it stops"
+> 

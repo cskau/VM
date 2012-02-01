@@ -1,0 +1,12 @@
+(vector (integer? "hello world")
+	(integer? integer?)
+	(integer? (lambda (x) x))
+	(integer? integer?)
+	(integer? #t)
+	(integer? 'foo)
+	(integer? '(a b))
+	(integer? (cons 'a (cons 'b '())))
+	(integer? (make-string 100 #\a))
+	(integer? (make-vector 10 0)))
+
+;;; expected result: #10(#f)

@@ -1,0 +1,8 @@
+(DAIMI-SchemeE03
+  (3 2 1)
+  ()
+  ((new-vec 2)
+   (extend)
+   (move 1 0 tmp 1)
+   (return))
+  "Out-of-bounds test program")

@@ -1,0 +1,434 @@
+% 04DAIMI-Scheme-virtual-machine.txt  -*- text -*-
+% dOvs 2003
+
+Structure and instruction set of the DAIMI-Scheme virtual machine.
+
+All references to 'r5rs' are references to the 'Revised^5 Report on
+the Algorithmic Language Scheme', which can be found at:
+
+        <http://www.schemers.org/Documents/Standards/R5RS/>
+
+-----------------------------------------------------------------------------
+
+Global registers
+----------------
+
+Control registers:
+    - ip: instruction pointer
+    - cont: continuation
+
+Environment registers:
+    - env-lib: vector holding the values of the predefined variables
+    - env-glo: vector holding the values of the global variables
+    - env-lex: list of vectors holding the values of the lexical variables
+    - env-tmp: vector holding the values of the temporary variables
+
+Auxiliary registers:
+    - aux-res: vector holding the value(s) last returned from a call
+    - aux-vec: vector for an extension of the lexical environment
+
+-----
+
+Registers are implemented as pointers to vectors:
+
+- ip is assigned during the fetch-decode-execute loop of the byte-code
+  interpreter;
+
+- cont is assigned during the execution of a call instruction (but not
+  during the execution of tail-call instruction) and read & re-assigned
+  during the execution of a return instruction; in addition, it is read
+  when call/cc is called and re-assigned when continuation closures are
+  applied;
+
+- env-lib is initialized to a vector of values, and then it never changes
+  (but the vector entries may change);
+
+- env-glo is initialized to a vector of values, and then it never changes
+  (but the vector entries may change);
+
+- env-lex is frequently assigned: it is saved and initialized when a
+  closure is activated (in call and tail-call), it is modified during the
+  execution of an extend instruction, and it is restored during the
+  execution of a return instruction;
+
+- env-tmp is assigned during the initialization of the VM; it denotes a
+  vector whose entries are frequently assigned;
+
+- aux-res is assigned during the initialization of the VM; it denotes a
+  vector that, in the current specification of DAIMI-Scheme, is always of
+  length 1; this entry is always assigned before executing a return
+  instruction;
+
+- aux-vec is assigned with fresh vectors from the heap.
+
+-----
+
+The vectors pointed to by the registers are:
+
+- a vector holding the values of the predefined variables
+  (held in env-lib);
+
+- a vector holding the values of the global variables of the program
+  (held in env-glo);
+
+-----
+
+In addition, there is also:
+
+- a table of lambdas containing their arity and a pointer to their entry point,
+  initialized with those declared in the program;
+
+- a table of symbols
+  initialized with those declared in the program;
+
+- a table of strings
+  initialized with those declared in the program.
+
+NB. Symbols and strings are specified as part of the load instruction in
+    the assembly format.  The binary format, however, has them factored
+    in tables (see the specification of the load instruction below).
+
+-----
+
+The lists pointed to by the registers are:
+
+- a list of vectors of values, one for every lexical-environment extension
+  (held in env-lex);
+
+- a list of activation records, one for every call
+  (held in cont).
+
+-----
+
+An activation record consists of
+
+- a list of activation records (a previous value of cont);
+- a list of environment extensions (a previous value of env-lex);
+- a pointer to an instruction (a future value of ip); and
+- env-tmp[0], ..., env-tmp[n], for some n.
+
+-----------------------------------------------------------------------------
+
+Symbolic instruction set
+------------------------
+
+All instructions are fully parenthesized, and structured as follows.
+    (mnemonic argument1 argument2 ...)
+
+----------
+
+(nop)
+    The no-operation instruction.  It has no effect.
+
+----------
+
+(label the-label)
+    Declares a label.
+    (This instruction has no physical presence once the symbolic
+    code is assembled into binary code.)
+
+----------
+
+(jump label)
+    Sets ip with the specified label.
+
+----------
+
+(jump-if-false Q i label)
+    Tests whether Q[i] holds the Scheme value #f.
+    If yes:
+        - sets ip with the specified label.
+    If no:
+        - does nothing.
+
+    Q can be:
+        res (for a result, ie, aux-res)
+        tmp (for temporary variables, ie, env-tmp)
+        glo (for global variables, ie, env-glo)
+        lib (for predefined variables, ie, env-lib)
+        0, 1, 2, ... (for lexical variables, ie, env-lex)
+    and i is an index.
+
+----------
+
+(new-vec n)
+    Allocates a fresh vector of size n [in register aux-vec]
+    for initializing or extending an environment.
+
+----------
+
+(extend)
+    Extends env-lex with the content of aux-vec.
+
+    (env-lex points to a list of vectors vs; extending env-lex with a
+    vector v means making it point to a list that is vs with v on top,
+    ie, v :: vs in ML and (cons v vs) in Scheme)
+
+    As a result of extend, the vector pointed to by aux-vec becomes the
+    new level 0 in the env-lex list, and all previous levels increase by
+    1.
+
+----------
+
+(move S i T j)
+    Transfers S[i] into T[j].
+
+    S can be:
+        res (for a result, ie, aux-res)
+        tmp (for temporary variables, ie, env-tmp)
+        glo (for global variables, ie, env-glo)
+        lib (for predefined variables, ie, env-lib)
+        0, 1, 2, ... (for lexical variables, ie, env-lex)
+    and i is an index.
+
+    T can be:
+        vec (for an environment extension, ie, aux-vec)
+        res (for a result, ie, aux-res)
+        tmp (for temporary variables, ie, env-tmp)
+        glo (for global variables, ie, env-glo)
+        lib (for predefined variables, ie, env-lib)
+        0, 1, 2, ... (for lexical variables, ie, env-lex)
+    and j is an index.
+
+----------
+
+(load V x T j)
+    Loads a Scheme value into T[j].
+
+    V can be:
+          nil for the empty list (then x does not matter)
+         bool for a boolean (then x is either 0 (false) or 1 (true))
+          int for an integer (then x is the integer)
+          str for a string (then x is the index of the string in the
+              global string table)
+         char for a character (then x is its ASCII code)
+          sym for a symbol (then x is the index of the symbol in the
+              global symbol table)
+   close-flat for a flat closure (then x is the index of the abstraction
+      and aux-vec holds a 1-element list containing the closure environment)
+   close-deep for a deep closure (then x is the index of the abstraction
+                             and the closure environment is held by env-lex)
+         void for the void value (then x does not matter)
+
+    T can be:
+        vec (for an environment extension, ie, aux-vec)
+        res (for a result, ie, aux-res)
+        tmp (for temporary variables, ie, env-tmp)
+        glo (for global variables, ie, env-glo)
+        lib (for predefined variables, ie, env-lib)
+        0, 1, 2, ... (for lexical variables, ie, env-lex)
+    and j is an index.
+
+----------
+
+(tail-call Q i)
+    Checks whether Q[i] holds a Scheme closure
+    and whether its arity matches the actuals (ie, the contents of aux-vec).
+    If no:
+        - raises an error.
+    If yes:
+
+    (a) if the closure is predefined:
+        - executes the corresponding C function,
+        - puts the result in the aux-res register, and
+        - returns (as in the return instruction).
+
+    (b) if the closure is user-defined:
+        - initializes env-lex with the closure environment,
+          extended with the actuals (ie, the contents of aux-vec), and
+        - jumps to the code associated to this Scheme closure.
+
+    (c) if the closure is a first-class continuation
+        (see below for a description of call/cc):
+        - moves the content of aux-vec[0] to aux-res[0],
+        - sets the cont register with the captured continuation, and
+        - returns (as in the return instruction).
+
+    Q can be:
+        res (for a result, ie, aux-res)
+        tmp (for temporary variables, ie, env-tmp)
+        glo (for global variables, ie, env-glo)
+        lib (for predefined variables, ie, env-lib)
+        0, 1, 2, ... (for lexical variables, ie, env-lex)
+    and i is an index.
+
+NB: let a be the length of the vector held by aux-vec (ie, the number of
+    actual parameters), and let f be the arity of the closure (>= -1).
+    For example:
+        - (lambda (x1 x2 x3 x4) e) has arity 4;
+        - (lambda (x1) e) has arity 1;
+        - (lambda () e) has arity 0;
+        - (lambda xs e) has arity -1;
+    If f >= 0 and f = a, then the arities match.
+    If f = -1 then the arities match.
+    Otherwise the arities don't match.
+    If f is negative and the arities match, then aux-vec[0], ..., aux-vec[a-1]
+    should be grouped in a Scheme list and this list should
+    be stored in aux-vec[0].
+
+NB: should DAIMI-Scheme be extended with mixed arity, as in, eg,
+        - (lambda (x1 x2 x3 x4 . rest) e)
+    the arity of this particular lambda would be -5 and the arity of
+        - (lambda (x1 . rest) e)
+    would be -2.  The first lambda can only be applied to at least 4
+    arguments and the second to at least 1.
+
+    For an arity of -5, aux-vec[0], aux-vec[1], aux-vec[2], and
+    aux-vec[3] should hold the first 4 actual parameters; if there are
+    only 4 actual parameters, then aux-vec[4] should point to the empty
+    list; if there are strictly more than 4 parameters (held in
+    aux-vec[4], aux-vec[5], etc.) then they should be grouped in a list
+    and this list should be stored in aux-vec[4].
+
+    For an arity of -2, aux-vec[0] should hold the first actual
+    parameter; if there is only 1 actual parameters, then aux-vec[1]
+    should point to the empty list; if there are strictly more than 1
+    parameters (held in aux-vec[1], aux-vec[2], etc.) then they should be
+    grouped in a list and this list should be stored in aux-vec[1].
+
+----------
+
+(call Q i n)
+    Checks whether Q[i] holds a Scheme closure
+    and whether its arity matches the actuals (ie, the contents of aux-vec).
+    If no:
+        - raises an error.
+    If yes, sets the cont register with a new activation record, ie, a
+    vector holding the current values of
+        - cont,
+        - env-lex,
+        - a reference to the next instruction, and
+        - env-tmp[0], ..., env-tmp[n-1]
+    and then, do as in the tail-call instruction, ie,
+
+    (a) if the closure is predefined:
+        - executes the corresponding C function,
+        - puts the result in the aux-res register, and
+        - returns (as in the return instruction).
+
+    (b) if the closure is user-defined:
+        - initializes env-lex with the closure environment,
+          extended with the actuals (ie, the contents of aux-vec), and
+        - jumps to the code associated to this Scheme closure.
+
+    (c) if the closure is a first-class continuation
+        (see below for a description of call/cc):
+        - moves the content of aux-vec[0] to aux-res[0],
+        - sets the cont register with the captured continuation, and
+        - returns (as in the return instruction).
+
+    Q can be:
+        res (for a result, ie, aux-res)
+        tmp (for temporary variables, ie, env-tmp)
+        glo (for global variables, ie, env-glo)
+        lib (for predefined variables, ie, env-lib)
+        0, 1, 2, ... (for lexical variables, ie, env-lex)
+    and i is an index.
+
+----------
+
+(return)
+    Restores the values from the activation record pointed to by the cont
+    register to
+        - cont,
+        - env-lex,
+        - ip, and
+        - env-tmp[0], ...
+
+-----------------------------------------------------------------------------
+
+Format of an assembly (byte-code) program
+-----------------------------------------
+
+See
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.dvi
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.ps
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.pdf
+
+-----------------------------------------------------------------------------
+
+Assembling a program: from assembly code to binary code
+-------------------------------------------------------
+
+See
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.dvi
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.ps
+http://www.daimi.au.dk/dOvs/vml/VML-fileformats.pdf
+
+-----------------------------------------------------------------------------
+
+Running a compiled program
+--------------------------
+
+Given a file containing object code, the vm
+
+(0) reads the contents of the file;
+(1) initializes itself;
+(2) jumps to the entry point and run.
+
+If the compiled code invokes the library function exit, then the VM
+should stop with an exit code corresponding to the integer argument of
+exit.
+
+When returning to the initial activation record (pointed to by the cont
+register), the value held in aux-res[0] should be output on stdout.
+
+-----------------------------------------------------------------------------
+
+NB. It is an error to evaluate an uninitialized (toplevel) variable.
+
+-----------------------------------------------------------------------------
+
+Size of the representation of integers
+--------------------------------------
+
+The front-end compiler are written in Standard ML of New Jersey: its
+reads and writes signed integers represented with 31 bits.  So should
+your compiler.
+
+The assembler is written in C: it reads and writes signed integers
+represented with 32 bits.
+
+The TA's VM is written in C: it reads and uses signed integers
+represented with 32 bits.  So should your VM.
+
+-----------------------------------------------------------------------------
+
+The predefined procedure call/cc
+--------------------------------
+
+call/cc is unary, and its expects a unary function as argument.
+
+It creates a continuation closure that contains the current content of
+the cont register, and applies the unary function to this continuation
+closure.
+
+-----------------------------------------------------------------------------
+
+The other predefined procedures
+-------------------------------
+
+- integer? is unary.  It returns the boolean value true if its argument
+  is an integer, and the boolean value false otherwise.
+
+- + is binary.  If its arguments are not integers, it yields an error.
+  Otherwise, it yields a new integer which is the sum of its arguments.
+
+- etc. (see the R5RS).
+
+-----------------------------------------------------------------------------
+
+Running the VM
+--------------
+
+The result of evaluating a DAIMI-Scheme program should be output (on
+stdout).  The output of non-circular data should be compatible with
+Petite Chez Scheme.
+
+To facilitate testing, nothing else should be output during the run of
+your VM, except of course what the compiled program outputs to
+current-output-port.
+
+-----------------------------------------------------------------------------
+
+% end of 04DAIMI-Scheme-virtual-machine.txt

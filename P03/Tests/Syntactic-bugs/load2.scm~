@@ -1,0 +1,3 @@
+(load 'this-file)
+
+;;; load takes a string

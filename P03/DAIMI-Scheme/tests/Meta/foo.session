@@ -1,0 +1,66 @@
+Chez Scheme Version 5.0a
+Copyright (c) 1994 Cadence Research Systems
+
+> (load "compiler.scm")
+> (time (run "tests/Meta/foo.scm"))
+(tests/Meta/foo.scm)
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+Initializing / initialized
+(time (run "tests/Meta/foo.scm"))
+    no collections
+    10 ms elapsed cpu time
+    10 ms elapsed real time
+    4616 bytes allocated
+42
+> (time (run "tests/Meta/foo-meta.scm"))
+(tests/Meta/foo-meta.scm(tests/Meta/../../lib.DAIMI-Scheme/standard-prelude.scm(tests/Meta/../../lib.DAIMI-Scheme/boolean.scm)(tests/Meta/../../lib.DAIMI-Scheme/compose.scm)(tests/Meta/../../lib.DAIMI-Scheme/equal.scm)(tests/Meta/../../lib.DAIMI-Scheme/list.scm)(tests/Meta/../../lib.DAIMI-Scheme/member.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/all-the-cxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/map.scm)(tests/Meta/../../lib.DAIMI-Scheme/for-each.scm)(tests/Meta/../../lib.DAIMI-Scheme/fold.scm)(tests/Meta/../../lib.DAIMI-Scheme/filter.scm)(tests/Meta/../../lib.DAIMI-Scheme/integer.scm)(tests/Meta/../../lib.DAIMI-Scheme/char.scm)(tests/Meta/../../lib.DAIMI-Scheme/string.scm)(tests/Meta/../../lib.DAIMI-Scheme/format.scm)(tests/Meta/../../lib.DAIMI-Scheme/vector.scm)(tests/Meta/../../lib.DAIMI-Scheme/integer-string-conversions.scm)(tests/Meta/../../lib.DAIMI-Scheme/input-output.scm)(tests/Meta/../../lib.DAIMI-Scheme/read.scm)(tests/Meta/../../lib.DAIMI-Scheme/write.scm)(tests/Meta/../../lib.DAIMI-Scheme/display.scm)(tests/Meta/../../lib.DAIMI-Scheme/error.scm)(tests/Meta/../../lib.DAIMI-Scheme/sort.scm)(tests/Meta/../../lib.DAIMI-Scheme/associate.scm))(tests/Meta/../../common.scm(tests/Meta/../../lib/predefined.scm)(tests/Meta/../../lib/gensym.scm)(tests/Meta/../../lib/verbose.scm)(tests/Meta/../../lib/0parser.scm)(tests/Meta/../../lib/1desugarer.scm)(tests/Meta/../../lib/2boxer.scm)(tests/Meta/../../lib/3linearizer.scm)(tests/Meta/../../lib/4scoper.scm)(tests/Meta/../../lib/5factorizer.scm)(tests/Meta/../../lib/6codegen.scm)(tests/Meta/../../lib/7dump.scm)(tests/Meta/../../lib/vm.scm)))
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+Initializing / initialized
+(tests/Meta/foo.scm)
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+Initializing / initialized
+(time (run "tests/Meta/foo-meta.scm"))
+    20 collections
+    4390 ms elapsed cpu time, including 910 ms collecting
+    4720 ms elapsed real time, including 890 ms collecting
+    20896648 bytes allocated, including 19114912 bytes reclaimed
+42
+> (time (run "tests/Meta/foo-meta-meta.scm"))
+(tests/Meta/foo-meta-meta.scm(tests/Meta/../../lib.DAIMI-Scheme/standard-prelude.scm(tests/Meta/../../lib.DAIMI-Scheme/boolean.scm)(tests/Meta/../../lib.DAIMI-Scheme/compose.scm)(tests/Meta/../../lib.DAIMI-Scheme/equal.scm)(tests/Meta/../../lib.DAIMI-Scheme/list.scm)(tests/Meta/../../lib.DAIMI-Scheme/member.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/all-the-cxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/map.scm)(tests/Meta/../../lib.DAIMI-Scheme/for-each.scm)(tests/Meta/../../lib.DAIMI-Scheme/fold.scm)(tests/Meta/../../lib.DAIMI-Scheme/filter.scm)(tests/Meta/../../lib.DAIMI-Scheme/integer.scm)(tests/Meta/../../lib.DAIMI-Scheme/char.scm)(tests/Meta/../../lib.DAIMI-Scheme/string.scm)(tests/Meta/../../lib.DAIMI-Scheme/format.scm)(tests/Meta/../../lib.DAIMI-Scheme/vector.scm)(tests/Meta/../../lib.DAIMI-Scheme/integer-string-conversions.scm)(tests/Meta/../../lib.DAIMI-Scheme/input-output.scm)(tests/Meta/../../lib.DAIMI-Scheme/read.scm)(tests/Meta/../../lib.DAIMI-Scheme/write.scm)(tests/Meta/../../lib.DAIMI-Scheme/display.scm)(tests/Meta/../../lib.DAIMI-Scheme/error.scm)(tests/Meta/../../lib.DAIMI-Scheme/sort.scm)(tests/Meta/../../lib.DAIMI-Scheme/associate.scm))(tests/Meta/../../common.scm(tests/Meta/../../lib/predefined.scm)(tests/Meta/../../lib/gensym.scm)(tests/Meta/../../lib/verbose.scm)(tests/Meta/../../lib/0parser.scm)(tests/Meta/../../lib/1desugarer.scm)(tests/Meta/../../lib/2boxer.scm)(tests/Meta/../../lib/3linearizer.scm)(tests/Meta/../../lib/4scoper.scm)(tests/Meta/../../lib/5factorizer.scm)(tests/Meta/../../lib/6codegen.scm)(tests/Meta/../../lib/7dump.scm)(tests/Meta/../../lib/vm.scm)))
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+Initializing / initialized
+(tests/Meta/foo-meta.scm(tests/Meta/../../lib.DAIMI-Scheme/standard-prelude.scm(tests/Meta/../../lib.DAIMI-Scheme/boolean.scm)(tests/Meta/../../lib.DAIMI-Scheme/compose.scm)(tests/Meta/../../lib.DAIMI-Scheme/equal.scm)(tests/Meta/../../lib.DAIMI-Scheme/list.scm)(tests/Meta/../../lib.DAIMI-Scheme/member.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/cxxxxxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/all-the-cxr.scm)(tests/Meta/../../lib.DAIMI-Scheme/map.scm)(tests/Meta/../../lib.DAIMI-Scheme/for-each.scm)(tests/Meta/../../lib.DAIMI-Scheme/fold.scm)(tests/Meta/../../lib.DAIMI-Scheme/filter.scm)(tests/Meta/../../lib.DAIMI-Scheme/integer.scm)(tests/Meta/../../lib.DAIMI-Scheme/char.scm)(tests/Meta/../../lib.DAIMI-Scheme/string.scm)(tests/Meta/../../lib.DAIMI-Scheme/format.scm)(tests/Meta/../../lib.DAIMI-Scheme/vector.scm)(tests/Meta/../../lib.DAIMI-Scheme/integer-string-conversions.scm)(tests/Meta/../../lib.DAIMI-Scheme/input-output.scm)(tests/Meta/../../lib.DAIMI-Scheme/read.scm)(tests/Meta/../../lib.DAIMI-Scheme/write.scm)(tests/Meta/../../lib.DAIMI-Scheme/display.scm)(tests/Meta/../../lib.DAIMI-Scheme/error.scm)(tests/Meta/../../lib.DAIMI-Scheme/sort.scm)(tests/Meta/../../lib.DAIMI-Scheme/associate.scm))(tests/Meta/../../common.scm(tests/Meta/../../lib/predefined.scm)(tests/Meta/../../lib/gensym.scm)(tests/Meta/../../lib/verbose.scm)(tests/Meta/../../lib/0parser.scm)(tests/Meta/../../lib/1desugarer.scm)(tests/Meta/../../lib/2boxer.scm)(tests/Meta/../../lib/3linearizer.scm)(tests/Meta/../../lib/4scoper.scm)(tests/Meta/../../lib/5factorizer.scm)(tests/Meta/../../lib/6codegen.scm)(tests/Meta/../../lib/7dump.scm)(tests/Meta/../../lib/vm.scm)))
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+
+
+...still running...
