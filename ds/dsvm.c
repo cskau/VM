@@ -138,6 +138,10 @@ void run(unsigned char* instructions) {
   void *env_glo, *env_tmp, *aux_res;
   uint8_t op = 0;
   unsigned int ip = 0;
+  /* opcode parameters */
+  uint32_t *l, *x;
+  uint16_t *i, *j, *n;
+  uint8_t q, s, t, v;
 
   while (1) {
     op = instructions[ip];
@@ -146,27 +150,52 @@ void run(unsigned char* instructions) {
         break;
       case OP_LOAD:
         printf("Unimplemented opcode: OP_LOAD\n");
+        v = (uint8_t*) instructions[ip + 1];
+        x = (uint32_t*) instructions[ip + 2];
+        t = (uint8_t*) instructions[ip + 6];
+        j = (uint16_t*) instructions[ip + 7];
+        ip += 8;
         break;
       case OP_MOVE:
         printf("Unimplemented opcode: OP_MOVE\n");
+        s = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        t = (uint8_t*) instructions[ip + 4];
+        j = (uint16_t*) instructions[ip + 5];
+        ip += 8;
         break;
       case OP_NEW_VEC:
         printf("Unimplemented opcode: OP_NEW_VEC\n");
+        n = (uint16_t*) instructions[ip + 1];
+        ip += 2;
         break;
       case OP_EXTEND:
         printf("Unimplemented opcode: OP_EXTEND\n");
         break;
-      case OP_JUMP_IF_FALSE:
-        printf("Unimplemented opcode: OP_JUMP_IF_FALSE\n");
-        break;
       case OP_JUMP:
         printf("Unimplemented opcode: OP_JUMP\n");
+        l = (uint32_t*) instructions[ip + 1];
+        ip += 4;
+        break;
+      case OP_JUMP_IF_FALSE:
+        printf("Unimplemented opcode: OP_JUMP_IF_FALSE\n");
+        q = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        l = (uint32_t*) instructions[ip + 4];
+        ip += 7;
         break;
       case OP_TAIL_CALL:
         printf("Unimplemented opcode: OP_TAIL_CALL\n");
+        q = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        ip += 3;
         break;
       case OP_CALL:
         printf("Unimplemented opcode: OP_CALL\n");
+        q = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        n = (uint16_t*) instructions[ip + 4];
+        ip += 5;
         break;
       case OP_RETURN:
         printf("Unimplemented opcode: OP_RETURN\n");
