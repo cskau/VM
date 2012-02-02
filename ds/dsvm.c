@@ -30,6 +30,35 @@ uint8_t Read8OrDie(FILE *file) {
   return getc(file);
 }
 
+typedef struct {
+  /* Program limits */
+  uint16_t max_glo, max_tmp, max_res;
+  /* String pool */
+  uint32_t string_count;
+  struct {
+    uint32_t length;
+    char *string;
+  } *string_pool;
+  /* Symbol pool */
+  uint32_t symbol_count;
+  struct {
+    uint32_t length;
+    char *symbol;
+  } *symbol_pool;
+  /* Lambda abstraction table */
+  uint32_t lambda_count;
+  struct {
+    int8_t arity;
+    uint32_t code;
+  } *lambda_pool;
+  /* Code */
+  uint32_t code_length;
+  unsigned char *instructions;
+  /* Compiler signature */
+  uint32_t signature_length;
+  unsigned char *compiler_signature;
+} VMLDSB;
+
 /* VML DSB file layout:
   • Magic word
   • Program limits
@@ -40,20 +69,22 @@ uint8_t Read8OrDie(FILE *file) {
   • Compiler signature
   • Magic word
 */
-unsigned char *LoadDSBOrDie(char *fname) {
+VMLDSB *LoadDSBOrDie(char *fname) {
   uint16_t max_glo, max_tmp, max_res;
   uint32_t string_count, string_length;
   uint32_t symbol_count, symbol_length;
   uint32_t lambda_count, lambda_code;
   int8_t lambda_arity;
   uint32_t code_length;
-  uint32_t i;
+  int i;
 
   unsigned char *strings;
   unsigned char *symbols;
   unsigned char *lambdas;
   unsigned char *instructions;
   unsigned char *compiler_signature;
+
+  VMLDSB *new_dsb = (VMLDSB *) malloc(sizeof(VMLDSB));
 
   FILE *file = fopen(fname, "r");
 
@@ -68,17 +99,23 @@ unsigned char *LoadDSBOrDie(char *fname) {
   }
 
   /* Program limits */
-  max_glo = Read16OrDie(file);
-  max_tmp = Read16OrDie(file);
-  max_res = Read16OrDie(file);
+  new_dsb->max_glo = Read16OrDie(file);
+  new_dsb->max_tmp = Read16OrDie(file);
+  new_dsb->max_res = Read16OrDie(file);
 
   /* String pool */
-  string_count = Read32OrDie(file);
-  strings = malloc(string_count * sizeof(unsigned char*));
-  for (i = 0; i < string_count; i++) {
-    string_length = Read32OrDie(file);
-    strings[i] = malloc(string_length * sizeof(char));
-    fread((char*)strings[i], sizeof(char), string_length, file);
+  new_dsb->string_count = Read32OrDie(file);
+  new_dsb->string_pool = malloc(
+      (new_dsb->string_count * sizeof(new_dsb->string_pool)));
+  for (i = 0; i < new_dsb->string_count; i++) {
+    new_dsb->string_pool[i].length = Read32OrDie(file);
+    new_dsb->string_pool[i].string = malloc(
+        new_dsb->string_pool[i].length * sizeof(char));
+    fread(
+        new_dsb->string_pool[i].string,
+        sizeof(char),
+        new_dsb->string_pool[i].length,
+        file);
   }
   if (Read8OrDie(file) != VML_EOS) {
     printf("Error: After strings, EOS missing.\n");
@@ -86,12 +123,18 @@ unsigned char *LoadDSBOrDie(char *fname) {
   }
 
   /* Symbol pool */
-  symbol_count = Read32OrDie(file);
-  symbols = malloc(symbol_count * sizeof(unsigned char*));
-  for (i = 0; i < symbol_count; i++) {
-    symbol_length = Read32OrDie(file);
-    symbols[i] = malloc(symbol_length * sizeof(char));
-    fread((char*)symbols[i], sizeof(char), symbol_length, file);
+  new_dsb->symbol_count = Read32OrDie(file);
+  new_dsb->symbol_pool = malloc(
+      (new_dsb->symbol_count * sizeof(new_dsb->symbol_pool)));
+  for (i = 0; i < new_dsb->symbol_count; i++) {
+    new_dsb->symbol_pool[i].length = Read32OrDie(file);
+    new_dsb->symbol_pool[i].symbol = malloc(
+        new_dsb->symbol_pool[i].length * sizeof(char));
+    fread(
+        new_dsb->symbol_pool[i].symbol,
+        sizeof(char),
+        new_dsb->symbol_pool[i].length,
+        file);
   }
   if (Read8OrDie(file) != VML_EOS) {
     printf("Error: After symbols, EOS missing.\n");
@@ -99,11 +142,12 @@ unsigned char *LoadDSBOrDie(char *fname) {
   }
 
   /* Lambda abstraction table */
-  lambda_count = Read32OrDie(file);
-  lambdas = malloc(lambda_count * sizeof(unsigned char*));
-  for (i = 0; i < symbol_count; i++) {
-    lambda_arity = (int8_t)Read8OrDie(file);
-    lambda_code = Read32OrDie(file);
+  new_dsb->lambda_count = Read32OrDie(file);
+  new_dsb->lambda_pool = malloc(
+      new_dsb->lambda_count * sizeof(new_dsb->lambda_pool));
+  for (i = 0; i < new_dsb->symbol_count; i++) {
+    new_dsb->lambda_pool[i].arity = (int8_t)Read8OrDie(file);
+    new_dsb->lambda_pool[i].code = Read32OrDie(file);
   }
   if (Read8OrDie(file) != VML_EOS) {
     printf("Error: After lambdas, EOS missing.\n");
@@ -111,18 +155,23 @@ unsigned char *LoadDSBOrDie(char *fname) {
   }
 
   /* Code */
-  code_length = Read32OrDie(file);
-  instructions = malloc(code_length * sizeof(unsigned char*));
-  fread(instructions, sizeof(char), code_length, file);
+  new_dsb->code_length = Read32OrDie(file);
+  new_dsb->instructions = malloc(new_dsb->code_length * sizeof(char));
+  fread(new_dsb->instructions, sizeof(char), new_dsb->code_length, file);
   if (Read8OrDie(file) != VML_EOS) {
     printf("Error: After code, EOS missing.\n");
     exit(-1);
   }
 
   /* Compiler Signature */
-  string_length = Read32OrDie(file);
-  compiler_signature = malloc(string_length * sizeof(char));
-  fread(compiler_signature, sizeof(char), string_length, file);
+  new_dsb->signature_length = Read32OrDie(file);
+  new_dsb->compiler_signature = malloc(
+      new_dsb->signature_length * sizeof(char));
+  fread(
+      new_dsb->compiler_signature, 
+      sizeof(char), 
+      new_dsb->signature_length, 
+      file);
 
   if (Read32OrDie(file) != VML_MAGIC) {
     printf("Error: Magic missing at end of file.\n");
@@ -131,11 +180,15 @@ unsigned char *LoadDSBOrDie(char *fname) {
 
   fclose(file);
 
-  return instructions;
+  return new_dsb;
 }
 
-void run(unsigned char* instructions) {
-  void *env_glo, *env_tmp, *aux_res;
+void run(VMLDSB *vmldsb) {
+  unsigned char* instructions = vmldsb->instructions;
+  uint32_t *env_lib, *env_lex, *aux_vec;
+  uint32_t *env_glo, *env_tmp, *aux_res;
+  uint32_t *cont;
+  
   uint8_t op = 0;
   unsigned int ip = 0;
   /* opcode parameters */
@@ -168,6 +221,7 @@ void run(unsigned char* instructions) {
         printf("Unimplemented opcode: OP_NEW_VEC\n");
         n = (uint16_t*) instructions[ip + 1];
         ip += 2;
+        aux_vec = calloc(n, sizeof(void*));
         break;
       case OP_EXTEND:
         printf("Unimplemented opcode: OP_EXTEND\n");
@@ -199,6 +253,9 @@ void run(unsigned char* instructions) {
         break;
       case OP_RETURN:
         printf("Unimplemented opcode: OP_RETURN\n");
+        if (cont == NULL) {
+          printf("%s\n", aux_res[0]);
+        }
         break;
       default:
         printf("Unknown opcode: %u\n", op);
@@ -214,8 +271,8 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
-  unsigned char * instructions = LoadDSBOrDie(argv[1]);
-  run(instructions);
+  VMLDSB *vmldsb = LoadDSBOrDie(argv[1]);
+  run(vmldsb);
 
   exit(0);
 }
