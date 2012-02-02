@@ -196,6 +196,8 @@ void run(VMLDSB *vmldsb) {
   uint16_t *i, *j, *n;
   uint8_t q, s, t, v;
 
+  aux_res = malloc(vmldsb->max_res * sizeof(uint32_t));
+
   while (1) {
     op = instructions[ip];
     switch (op) {
