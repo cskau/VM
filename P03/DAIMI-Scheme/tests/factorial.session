@@ -1,0 +1,28 @@
+Petite Chez Scheme Version 6.0a
+Copyright (c) 1998 Cadence Research Systems
+
+> (load "compiler.scm")
+> (run "tests/factorial.scm")
+(tests/factorial.scm)
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+Initializing / initialized
+120
+> (dump "tests/factorial.scm")
+(tests/factorial.scm)
+Parsing / Parsed
+Desugaring / Desugared
+Boxing / Boxed
+Linearizing / Linearized
+Scoping / Scoped
+Factorizing / Factorized
+Generating code / Code generated
+> (run "tests/factorial.dsa")
+Initializing / initialized
+120
+> 

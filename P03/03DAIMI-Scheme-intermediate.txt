@@ -1,0 +1,72 @@
+% 03DAIMI-Scheme-intermediate.txt -*- text -*-
+% dOvs'03
+
+This file describes the subset of DAIMI-Scheme after front-end
+compilation (ie, parsing, desugaring, and boxing).
+
+----------
+
+    <program> ::= <definition>* <expression>
+
+ <definition> ::= (define <toplevel-variable> <expression>)
+
+ <expression> ::= <integer>
+                | <boolean>
+                | <character>
+                | <string>
+                | <symbol>
+                | <nil>
+                | <variable>
+                | (<expression> <expression>*)
+                | (set! <toplevel-variable> <expression>)
+                | (if <expression> <expression> <expression>)
+                | (let* ({[<variable> <expression>]}+)
+                    <expression>)
+                | (let ({[<variable> <expression>]}+)
+                    <expression>)
+                | (letrec ({[<variable> (lambda <formals> <expression>)]}+)
+                    <expression>)
+                | (begin {<expression>}+)
+
+    <formals> ::= <variable>
+                | (<variable>*)
+
+<toplevel-variable> ::= <variable>
+
+----------
+
+The next phase in the compiler will be linearization.
+For example, here is the BNF of DAIMI-Scheme, after linearization
+in the DAIMI-Scheme compiler in DAIMI-Scheme:
+
+    <program> ::= (begin <expression>* <expression>)
+
+ <expression> ::= <value>
+                | (<value> <value>*)
+                | (set! <toplevel-variable> <value>)
+                | (if <value> <expression> <expression>)
+                | (let* ({[<variable> <computation>]}+)
+                    <expression>)
+                | (let ({[<variable> <value>]}+)
+                    <expression>)
+                | (letrec ({[<variable> (lambda <formals> <expression>)]}+)
+                    <expression>)
+
+      <value> ::= <literal>
+                | <variable>
+
+<computation> ::= (lambda <formals> <expression>)
+                | (<value> <value>*)
+                | (set! <toplevel-variable> <value>)
+
+    <formals> ::= <variable>
+                | (<variable>*)
+
+<toplevel-variable> ::= <variable>
+
+We will cover linearization and the remaining phases of the compiler in a
+lecture.
+
+----------
+
+% end of 03DAIMI-Scheme-intermediate.txt

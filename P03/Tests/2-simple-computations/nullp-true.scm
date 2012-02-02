@@ -1,0 +1,3 @@
+(null? '())
+
+;;; expected result: #t

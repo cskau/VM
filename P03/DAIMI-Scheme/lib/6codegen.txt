@@ -1,0 +1,16 @@
+% DAIMI-Scheme/lib/codegen.txt -*- text -*-
+;;; Olivier Danvy <danvy@brics.dk>
+;;; October 2002
+
+----------
+
+(codegen-program p)
+where	p denotes program produced by factorize-program
+
+
+The idea here is
+	- to generate symbolic byte code.
+
+----------
+
+end of "codegen.txt"

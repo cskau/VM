@@ -1,0 +1,5 @@
+
+This directory contains DAIMI-Scheme assembly programs that
+access aux-vec and env-lex out of bounds. They must all result
+in an error message when run in the vm.
+

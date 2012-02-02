@@ -1,0 +1,9 @@
+(DAIMI-SchemeE03
+  (3 0 1)
+  ()
+  ((load int 100 glo 0)
+   (load int 200 glo 1)
+   (load int 300 glo 2)
+   (move glo 1 res 0)
+   (return))
+  "DAIMI-Scheme compiler, 03-10-22")

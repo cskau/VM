@@ -1,0 +1,79 @@
+% DAIMI-Scheme/00README.please -*- text -*-
+% Olivier Danvy <danvy@brics.dk>
+% November 2002, October 2003
+% Version of 03-10-12
+
+----------
+
+To use this DAIMI-Scheme compiler under Petite Chez Scheme, start this system
+in the current directory and evaluate:
+	(load "compile.scm")
+
+You are now in a DAIMI-Scheme environment, and the following commands are
+available:
+
+- (dump filename)
+	- dump takes one argument, which is a string;
+	- this string is a filename, with or without .scm extension
+	  and the corresponding file <filename.scm> contains a DAIMI-Scheme
+	  program;
+	- dump compiles this program and dumps the symbolic result
+	  in the file <filename.dsa>.
+
+- (run x)
+	- run takes one argument, which is a string;
+	- this string should be a filename, with or without .scm or .dsa
+	  suffix (without extension it is interpreted as morally suffixed
+	  with .scm);
+	- the corresponding file <filename.scm> contains a source
+	  DAIMI-Scheme program; this program is then compiled and run;
+	- the corresponding file <filename.dsa> contains a compiled
+	  DAIMI-Scheme program in symbolic form (ie, produced by
+	  the command dump); this program is then loaded and run.
+
+- (ditch x)
+	- ditch takes one argument, which is a string;
+	- this string should be a filename, with or without .scm suffix
+          (without extension it is interpreted as morally suffixed with .scm);
+	- the corresponding file <filename.scm> contains a source
+	  DAIMI-Scheme program; this program is then desugared, boxed,
+          linearized, and returned;
+
+- (source-compile-program x)
+	- source-compile-program takes one argument, which is a string;
+	- this string should be a filename, with or without .scm suffix
+          (without extension it is interpreted as morally suffixed with .scm);
+	- the corresponding file <filename.scm> contains a source
+	  DAIMI-Scheme program; this program is then desugared, boxed,
+          linearized, and stored in <filename.scm-lin>;
+
+- (source-compile-program-pretty x)
+	- source-compile-program-pretty takes one argument, which is a string;
+	- this string should be a filename, with or without .scm suffix
+          (without extension it is interpreted as morally suffixed with .scm);
+	- the corresponding file <filename.scm> contains a source
+	  DAIMI-Scheme program; this program is then desugared, boxed,
+          linearized, and stored in <filename.scm-lin> in pretty-printed form.
+
+----------
+
+The following flags can be redefined:
+
+- verbose (in file compile.common): for visualizing the compilation process
+
+- pretty (in file compile.common): for prettifying the output of run
+
+----------
+
+The directory lib/ contains the source code of the compiler and of the
+VM.
+
+The directory lib.DAIMI-Scheme/ contains the Scheme functions that are
+used in the compiler and the VM but that are not native to DAIMI-Scheme.
+
+The directory tests/ contains a reduced number of tests
+(see ../Tests/ for many more).
+
+----------
+
+end of DAIMI-Scheme/00README.please

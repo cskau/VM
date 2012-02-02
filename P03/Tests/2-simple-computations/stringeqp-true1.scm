@@ -1,0 +1,11 @@
+(string=? "" "")
+
+;;; expected result #t
+
+
+
+
+
+
+
+

@@ -1,0 +1,145 @@
+;;; symbolic-derivation.scm
+;;; contributed in 2002 by the team lambda
+
+
+;;;;;;;;;;
+;;; Misc. basic procedures:
+
+(define list 
+  (lambda xs
+    xs))
+
+(define cadr
+  (lambda (x)
+    (car (cdr x))))
+
+(define cddr
+  (lambda (x)
+    (cdr (cdr x))))
+
+(define caddr 
+  (lambda (x)
+    (cadr (cdr x))))
+
+(define cdddr 
+  (lambda (x)
+    (cddr (cdr x))))
+
+
+;;;;;;;;;;
+;;; Predicates:
+
+(define constant? integer?)
+
+(define variable? symbol?)
+
+(define same-variable? 
+  (lambda (v1 v2)
+    (and (variable? v1)
+	 (variable? v2)
+	 (eqv? v1 v2))))
+
+(define operator?
+  (lambda (op)
+    (lambda (x)
+      (and (pair? x)
+	   (eqv? (car x) op)
+	   (pair? (cdr x))
+	   (pair? (cddr x))
+	   (null? (cdddr x))))))
+
+(define sum?
+  (operator? '+))
+
+(define product?
+  (operator? '*))
+
+
+;;;;;;;;;;
+;;; Accessors:
+
+(define addend cadr)
+
+(define augend caddr)
+
+(define multiplier cadr)
+
+(define multiplicand caddr)
+
+
+;;;;;;;;;;
+;;; Constructors:
+
+(define make-sum 
+  (lambda (a1 a2)
+    (if (integer? a1)
+	(cond
+	  [(= a1 0)
+	   a2]
+	  [(integer? a2)
+	   (+ a1 a2)]
+	  [else
+	   (list '+ a1 a2)])
+	(if (and (integer? a2)
+		 (= a2 0))
+	    a1
+	    (list '+ a1 a2)))))
+
+(define make-product 
+  (lambda (m1 m2)
+    (if (integer? m1)
+	(case m1
+	  [(0)
+	   0]
+	  [(1)
+	   m2]
+	  [else
+	   (if (integer? m2)
+	       (* m1 m2)
+	       (list '* m1 m2))])
+	(if (integer? m2)
+	    (case m2
+	      [(0)
+	       0]
+	      [(1)
+	       m1]
+	      [else
+	       (list '* m1 m2)])
+	    (list '* m1 m2)))))
+
+
+;;;;;;;;;;
+;;; Main procedure:
+
+(define deriv 
+  (lambda (exp var)
+    (cond
+      [(constant? exp)
+       0]
+      [(variable? exp)
+       (if (same-variable? exp var)
+	   1
+	   0)]
+      [(sum? exp)
+       (make-sum (deriv (addend exp) var)
+		 (deriv (augend exp) var))]
+      [(product? exp)
+       (make-sum (make-product (multiplier exp)
+			       (deriv (multiplicand exp) var))
+		 (make-product (deriv (multiplier exp) var)
+			       (multiplicand exp)))]
+      [else
+       ;;; "invalid expression to derive"	 
+       (exit 1)])))
+
+
+;;;;;;;;;;
+;;; Tests:
+
+(define val1 (deriv '(+ (* x x) x) 'x))
+
+(define val2 (deriv '(+ (* (+ (* (* x x) 10) x) x) 500) 'x))
+
+(list val1 val2)
+
+;;; expected result: ((+ (+ x x) 1) (+ (+ (* (* x x) 10) x) (* (+ (* (+ x x) 10) 1) x)))
