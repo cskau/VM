@@ -1,3 +1,0 @@
-(load "foo" "bar")
-
-;;; load takes 1 sub-expression

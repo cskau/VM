@@ -1,7 +1,0 @@
-(DAIMI-SchemeE03
-  (3 2 1)
-  ()
-  ((new-vec 5)
-   (move tmp 1 vec 7)
-   (return))
-  "Out-of-bounds test program")

@@ -40,7 +40,7 @@ uint8_t Read8OrDie(FILE *file) {
   • Compiler signature
   • Magic word
 */
-void LoadDSBOrDie(char *fname) {
+unsigned char *LoadDSBOrDie(char *fname) {
   uint16_t max_glo, max_tmp, max_res;
   uint32_t string_count, string_length;
   uint32_t symbol_count, symbol_length;
@@ -129,9 +129,83 @@ void LoadDSBOrDie(char *fname) {
     exit(-1);
   }
 
-  printf("%s\n", compiler_signature);
-
   fclose(file);
+
+  return instructions;
+}
+
+void run(unsigned char* instructions) {
+  void *env_glo, *env_tmp, *aux_res;
+  uint8_t op = 0;
+  unsigned int ip = 0;
+  /* opcode parameters */
+  uint32_t *l, *x;
+  uint16_t *i, *j, *n;
+  uint8_t q, s, t, v;
+
+  while (1) {
+    op = instructions[ip];
+    switch (op) {
+      case OP_NOP:
+        break;
+      case OP_LOAD:
+        printf("Unimplemented opcode: OP_LOAD\n");
+        v = (uint8_t*) instructions[ip + 1];
+        x = (uint32_t*) instructions[ip + 2];
+        t = (uint8_t*) instructions[ip + 6];
+        j = (uint16_t*) instructions[ip + 7];
+        ip += 8;
+        break;
+      case OP_MOVE:
+        printf("Unimplemented opcode: OP_MOVE\n");
+        s = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        t = (uint8_t*) instructions[ip + 4];
+        j = (uint16_t*) instructions[ip + 5];
+        ip += 8;
+        break;
+      case OP_NEW_VEC:
+        printf("Unimplemented opcode: OP_NEW_VEC\n");
+        n = (uint16_t*) instructions[ip + 1];
+        ip += 2;
+        break;
+      case OP_EXTEND:
+        printf("Unimplemented opcode: OP_EXTEND\n");
+        break;
+      case OP_JUMP:
+        printf("Unimplemented opcode: OP_JUMP\n");
+        l = (uint32_t*) instructions[ip + 1];
+        ip += 4;
+        break;
+      case OP_JUMP_IF_FALSE:
+        printf("Unimplemented opcode: OP_JUMP_IF_FALSE\n");
+        q = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        l = (uint32_t*) instructions[ip + 4];
+        ip += 7;
+        break;
+      case OP_TAIL_CALL:
+        printf("Unimplemented opcode: OP_TAIL_CALL\n");
+        q = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        ip += 3;
+        break;
+      case OP_CALL:
+        printf("Unimplemented opcode: OP_CALL\n");
+        q = (uint8_t*) instructions[ip + 1];
+        i = (uint16_t*) instructions[ip + 2];
+        n = (uint16_t*) instructions[ip + 4];
+        ip += 5;
+        break;
+      case OP_RETURN:
+        printf("Unimplemented opcode: OP_RETURN\n");
+        break;
+      default:
+        printf("Unknown opcode: %u\n", op);
+        exit(-1);
+    }
+    ip++;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -140,7 +214,8 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
-  LoadDSBOrDie(argv[1]);
+  unsigned char * instructions = LoadDSBOrDie(argv[1]);
+  run(instructions);
 
   exit(0);
 }

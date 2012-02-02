@@ -1,6 +1,0 @@
-(DAIMI-SchemeE03
-  (0 0 1)
-  ()
-  ((load sym DAIMI-Scheme res 0)
-   (return))
-  "DAIMI-Scheme compiler, 03-10-22")

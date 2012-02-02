@@ -1,1 +1,0 @@
-'"DAIMI-Scheme"
