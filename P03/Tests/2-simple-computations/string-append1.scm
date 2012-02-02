@@ -1,9 +1,0 @@
-(string-append "" "")
-
-;;; expected result ""
-
-
-
-
-
-

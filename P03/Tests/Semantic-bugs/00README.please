@@ -1,9 +1,0 @@
-% Semantic-bugs/00README.please -*- text -*-
-
-This directory contains DAIMI-Scheme programs that behave anomalously, be
-it by making the VM reach an error state (type error, resource overflow)
-or diverging (either looping or allocating increasingly much memory).
-
-----------
-
-end of 00README.please

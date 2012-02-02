@@ -1,3 +1,0 @@
-(boolean? '())
-
-;;; expected result #f

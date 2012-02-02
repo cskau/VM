@@ -1,9 +1,0 @@
-(DAIMI-SchemeE03
-  (1 0 1)
-  ()
-  ((load str "a" glo 0)
-   (new-vec 2)
-   (move glo 0 vec 0)
-   (move glo 0 vec 1)
-   (tail-call lib 40))
-  "DAIMI-Scheme compiler, 03-10-22")

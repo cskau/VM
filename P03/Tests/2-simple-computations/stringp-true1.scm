@@ -1,7 +1,0 @@
-(string? "")
-
-;;; expected result #t
-
-
-
-

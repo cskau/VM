@@ -1,3 +1,0 @@
-(apply string '())
-
-;;; expected result: ""
