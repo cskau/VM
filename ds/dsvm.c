@@ -210,6 +210,7 @@ void Run(VMLDSB *vmldsb) {
         t = (uint8_t*) instructions[ip + 6];
         j = (uint16_t*) instructions[ip + 7];
         ip += 8;
+        DSValue *new_value = CreateValue(v, x);
         break;
       case OP_MOVE:
         printf("Unimplemented opcode: OP_MOVE\n");

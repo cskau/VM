@@ -1,3 +1,4 @@
+#include <stdint.h>
 
 #define  VML_MAGIC  0xDA15CE03
 #define  VML_EOS    0x80
@@ -11,15 +12,39 @@
 #define  SCP_TMP  −4
 #define  SCP_VEC  −5
 
-#define  TYPE_NIL        0
-#define  TYPE_BOOL       1
-#define  TYPE_INT        2
-#define  TYPE_CHAR       3
-#define  TYPE_STR        4
-#define  TYPE_SYM        5
-#define  TYPE_CLOSEFLAT  6
-#define  TYPE_CLOSEDEEP  7
-#define  TYPE_VOID       8
+enum ValueTypes {
+  NIL = 0,
+  BOOL = 1,
+  INT = 2,
+  CHAR = 3,
+  STR = 4,
+  SYM = 5,
+  CLOSE_FLAT = 6,
+  CLOSE_DEEP = 7,
+  VOID = 8,
+};
+
+typedef struct {
+  enum ValueTypes type;
+  union {
+    int32_t value;
+    uint32_t index;
+    char code;
+  };
+} DSValue;
+
+DSValue *CreateValue(enum ValueTypes type, uint32_t value) {
+  DSValue *new_value = malloc(sizeof(DSValue));
+  new_value->type = type;
+  if (new_value->type == INT) {
+    new_value->value = (int32_t)value;
+  } else if (new_value->type == CHAR) {
+    new_value->code = (char)value;
+  } else {
+    new_value->index = (uint32_t)value;
+  }
+  return new_value;
+};
 
 
 /* 5.3 The Instructions */
