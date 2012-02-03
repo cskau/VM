@@ -183,20 +183,47 @@ VMLDSB *LoadDSBOrDie(char *fname) {
   return new_dsb;
 }
 
+void PrintValue(DSValue *value) {
+  switch (value->type) {
+    case INT:
+      printf("%i\n", value->value);
+      break;
+    default:
+      printf("Unimplemented printing method.. :(\n");
+  }
+}
+
+DSValue *Lib(uint16_t i, DSValue *aux_vec) {
+  switch (i) {
+    case LIB_INTEGERQ:
+      printf("Unimplemented library function: LIB_INTEGERQ\n");
+      break;
+    case LIB_PLUS:
+      return CreateValue(INT, 42);
+      break;
+    default:
+      printf("Unimplemented or unknown library function: %i\n", i);
+  }
+  return NULL;
+}
+
 void Run(VMLDSB *vmldsb) {
   unsigned char* instructions = vmldsb->instructions;
-  uint32_t *env_lib, *env_lex, *aux_vec;
-  uint32_t *env_glo, *env_tmp, *aux_res;
-  uint32_t *cont;
+  DSValue **env_lib, **env_lex, **aux_vec;
+  DSValue **env_glo, **env_tmp, **aux_res;
+  uint32_t *cont = NULL;
   
   uint8_t op = 0;
   unsigned int ip = 0;
-  /* opcode parameters */
-  uint32_t *l, *x;
-  uint16_t *i, *j, *n;
-  uint8_t q, s, t, v;
 
-  aux_res = malloc(vmldsb->max_res * sizeof(uint32_t));
+  /* opcode parameters */
+  uint32_t l, x;
+  uint16_t i, j, n;
+  int8_t q, s, t, v;
+
+  aux_res = malloc(vmldsb->max_res * sizeof(DSValue*));
+  env_tmp = malloc(vmldsb->max_tmp * sizeof(DSValue*));
+  env_glo = malloc(vmldsb->max_glo * sizeof(DSValue*));
 
   while (1) {
     op = instructions[ip];
@@ -205,44 +232,50 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_LOAD:
         printf("Unimplemented opcode: OP_LOAD\n");
-        v = (uint8_t*) instructions[ip + 1];
-        x = (uint32_t*) instructions[ip + 2];
-        t = (uint8_t*) instructions[ip + 6];
-        j = (uint16_t*) instructions[ip + 7];
+        v = instructions[ip + 1];
+        x = instructions[ip + 2];
+        t = instructions[ip + 6];
+        j = instructions[ip + 7];
         ip += 8;
-        DSValue *new_value = CreateValue(*v, *x);
-        switch (*t) {
+        DSValue *new_value = CreateValue(v, x);
+        switch (t) {
           case SCP_LIB:
-            env_lib[*j] = new_value;
+            printf("env_lib[%i]\n", j);
+            env_lib[j] = new_value;
             break;
           case SCP_GLO:
-            env_glo[*j] = new_value;
+            printf("env_glo[%i]\n", j);
+            env_glo[j] = new_value;
             break;
           case SCP_RES:
-            aux_res[*j] = new_value;
+            printf("aux_res[%i]\n", j);
+            aux_res[j] = new_value;
             break;
           case SCP_TMP:
-            env_tmp[*j] = new_value;
+            printf("env_tmp[%i]\n", j);
+            env_tmp[j] = new_value;
             break;
           case SCP_VEC:
-            aux_vec[*j] = new_value;
+            printf("aux_vec[%i]\n", j);
+            aux_vec[j] = new_value;
             break;
           default:
-            env_lex[*t][*j] = new_value;
+            printf("env-lex[%i]\n", j);
+            ((uint32_t *)env_lex[t])[j] = new_value;
             break;
         }
         break;
       case OP_MOVE:
         printf("Unimplemented opcode: OP_MOVE\n");
-        s = (uint8_t*) instructions[ip + 1];
-        i = (uint16_t*) instructions[ip + 2];
-        t = (uint8_t*) instructions[ip + 4];
-        j = (uint16_t*) instructions[ip + 5];
+        s = instructions[ip + 1];
+        i = instructions[ip + 2];
+        t = instructions[ip + 4];
+        j = instructions[ip + 5];
         ip += 8;
         break;
       case OP_NEW_VEC:
         printf("Unimplemented opcode: OP_NEW_VEC\n");
-        n = (uint16_t*) instructions[ip + 1];
+        n = instructions[ip + 1];
         ip += 2;
         aux_vec = calloc(n, sizeof(DSValue*));
         break;
@@ -251,33 +284,41 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_JUMP:
         printf("Unimplemented opcode: OP_JUMP\n");
-        l = (uint32_t*) instructions[ip + 1];
+        l = instructions[ip + 1];
         ip += 4;
         break;
       case OP_JUMP_IF_FALSE:
         printf("Unimplemented opcode: OP_JUMP_IF_FALSE\n");
-        q = (uint8_t*) instructions[ip + 1];
-        i = (uint16_t*) instructions[ip + 2];
-        l = (uint32_t*) instructions[ip + 4];
+        q = instructions[ip + 1];
+        i = instructions[ip + 2];
+        l = instructions[ip + 4];
         ip += 7;
         break;
       case OP_TAIL_CALL:
         printf("Unimplemented opcode: OP_TAIL_CALL\n");
-        q = (uint8_t*) instructions[ip + 1];
-        i = (uint16_t*) instructions[ip + 2];
+        q = instructions[ip + 1];
+        i = instructions[ip + 2];
         ip += 3;
+        printf("%i %i\n", q, i);
+        aux_res = Lib(i, aux_vec);
+         /* you saw that right, a goto ! */
+        goto op_return;
         break;
       case OP_CALL:
         printf("Unimplemented opcode: OP_CALL\n");
-        q = (uint8_t*) instructions[ip + 1];
-        i = (uint16_t*) instructions[ip + 2];
-        n = (uint16_t*) instructions[ip + 4];
+        q = instructions[ip + 1];
+        i = instructions[ip + 2];
+        n = instructions[ip + 4];
         ip += 5;
+        printf("%i %i %i\n", q, i, n);
         break;
       case OP_RETURN:
         printf("Unimplemented opcode: OP_RETURN\n");
+        /* see OP_TAIL_CALL above */
+        op_return:
         if (cont == NULL) {
-          printf("%s\n", aux_res[0]);
+          PrintValue(&aux_res[0]);
+          return;
         }
         break;
       default:
