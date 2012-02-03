@@ -210,20 +210,25 @@ void Run(VMLDSB *vmldsb) {
         t = (uint8_t*) instructions[ip + 6];
         j = (uint16_t*) instructions[ip + 7];
         ip += 8;
-        DSValue *new_value = CreateValue(v, x);
-        switch (t) {
+        DSValue *new_value = CreateValue(*v, *x);
+        switch (*t) {
           case SCP_LIB:
+            env_lib[*j] = new_value;
             break;
           case SCP_GLO:
+            env_glo[*j] = new_value;
             break;
           case SCP_RES:
+            aux_res[*j] = new_value;
             break;
           case SCP_TMP:
+            env_tmp[*j] = new_value;
             break;
           case SCP_VEC:
             aux_vec[*j] = new_value;
             break;
           default:
+            env_lex[*t][*j] = new_value;
             break;
         }
         break;
