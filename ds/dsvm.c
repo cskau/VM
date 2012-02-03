@@ -211,6 +211,21 @@ void Run(VMLDSB *vmldsb) {
         j = (uint16_t*) instructions[ip + 7];
         ip += 8;
         DSValue *new_value = CreateValue(v, x);
+        switch (t) {
+          case SCP_LIB:
+            break;
+          case SCP_GLO:
+            break;
+          case SCP_RES:
+            break;
+          case SCP_TMP:
+            break;
+          case SCP_VEC:
+            aux_vec[*j] = new_value;
+            break;
+          default:
+            break;
+        }
         break;
       case OP_MOVE:
         printf("Unimplemented opcode: OP_MOVE\n");
@@ -224,7 +239,7 @@ void Run(VMLDSB *vmldsb) {
         printf("Unimplemented opcode: OP_NEW_VEC\n");
         n = (uint16_t*) instructions[ip + 1];
         ip += 2;
-        aux_vec = calloc(n, sizeof(void*));
+        aux_vec = calloc(n, sizeof(DSValue*));
         break;
       case OP_EXTEND:
         printf("Unimplemented opcode: OP_EXTEND\n");

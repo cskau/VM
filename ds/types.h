@@ -6,11 +6,11 @@
 /* 5.2 Types and Values */
 
 /* non-negative value for the lexical scope corresponding to that number */
-#define  SCP_LIB  −1
-#define  SCP_GLO  −2
-#define  SCP_RES  −3
-#define  SCP_TMP  −4
-#define  SCP_VEC  −5
+#define  SCP_LIB  -1
+#define  SCP_GLO  -2
+#define  SCP_RES  -3
+#define  SCP_TMP  -4
+#define  SCP_VEC  -5
 
 enum ValueTypes {
   NIL = 0,
