@@ -183,7 +183,7 @@ VMLDSB *LoadDSBOrDie(char *fname) {
   return new_dsb;
 }
 
-void run(VMLDSB *vmldsb) {
+void Run(VMLDSB *vmldsb) {
   unsigned char* instructions = vmldsb->instructions;
   uint32_t *env_lib, *env_lex, *aux_vec;
   uint32_t *env_glo, *env_tmp, *aux_res;
@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
   }
 
   VMLDSB *vmldsb = LoadDSBOrDie(argv[1]);
-  run(vmldsb);
+  Run(vmldsb);
 
   exit(0);
 }
