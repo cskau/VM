@@ -331,10 +331,16 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_EXTEND:
         printf("Unimplemented opcode: OP_EXTEND\n");
-        DSVector *new_env_lex = malloc(sizeof(DSVector));
-        new_env_lex->length = (env_lex != NULL) ? (env_lex->length + 1) : 1;
-        new_env_lex->vectors[0] = aux_vec;
-        env_lex = new_env_lex;
+        DSVector *new_vec = malloc(sizeof(DSVector));
+        new_vec->length = (env_lex != NULL) ? env_lex->length : 1;
+        new_vec->vectors = malloc(new_vec->length * sizeof(DSVector));
+        new_vec->vectors[0] = aux_vec;
+        if (env_lex != NULL) {
+          /*
+          memcpy(new_vec->vectors[1], env_lex);
+          */
+        }
+        env_lex = new_vec;
         break;
       case OP_JUMP:
         printf("Unimplemented opcode: OP_JUMP\n");
