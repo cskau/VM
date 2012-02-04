@@ -269,7 +269,8 @@ void Run(VMLDSB *vmldsb) {
   unsigned char* instructions = vmldsb->instructions;
   DSVector *env_lex;
   DSValue **env_lib, **aux_vec;
-  DSValue **env_glo, **env_tmp, **aux_res;
+  DSValue **env_glo, **env_tmp;
+  DSVector *aux_res;
   uint32_t *cont = NULL;
   
   uint8_t op = 0;
@@ -280,7 +281,7 @@ void Run(VMLDSB *vmldsb) {
   uint16_t i, j, n;
   int8_t q, s, t, v;
 
-  aux_res = malloc(vmldsb->max_res * sizeof(DSValue*));
+  aux_res = {};
   env_tmp = malloc(vmldsb->max_tmp * sizeof(DSValue*));
   env_glo = malloc(vmldsb->max_glo * sizeof(DSValue*));
 
