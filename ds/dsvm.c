@@ -240,6 +240,18 @@ DSValue *Lib(uint16_t i, DSVector *aux_vec) {
           INT,
           (aux_vec->values[0]->value + aux_vec->values[1]->value));
       break;
+    case LIB_MINUS:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          INT,
+          (aux_vec->values[0]->value - aux_vec->values[1]->value));
+      break;
+    case LIB_TIMES:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          INT,
+          (aux_vec->values[0]->value * aux_vec->values[1]->value));
+      break;
     case LIB_EQ:
       /* TODO: type checking? */
       CheckArityOrDie(2, aux_vec->length);
@@ -323,12 +335,9 @@ void Run(VMLDSB *vmldsb) {
   int8_t q, s, t, v;
 
   /* init from dsb info */
-  aux_res = malloc(sizeof(DSVector));
-  aux_res->values = malloc(vmldsb->max_res * sizeof(DSValue*));
-  env_tmp = malloc(sizeof(DSVector));
-  env_tmp->values = malloc(vmldsb->max_tmp * sizeof(DSValue*));
-  env_glo = malloc(sizeof(DSVector));
-  env_glo->values = malloc(vmldsb->max_glo * sizeof(DSValue*));
+  aux_res = CreateVector(vmldsb->max_res);
+  env_tmp = CreateVector(vmldsb->max_tmp);
+  env_glo = CreateVector(vmldsb->max_glo);
 
   while (1) {
     op = instructions[ip];
@@ -358,6 +367,8 @@ void Run(VMLDSB *vmldsb) {
         j = instructions[ip + 5];
         printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
         ip += 6;
+        if (env_tmp->values[0]) PrintValue(env_tmp->values[0]);
+        if (aux_res->values[0]) PrintValue(aux_res->values[0]);
         DSValue *from = GetVector(
             s,
             env_lib, env_glo, aux_res,
@@ -410,7 +421,8 @@ void Run(VMLDSB *vmldsb) {
         ip += 3;
         op_tail_call:
         if (q == SCP_LIB) {
-          aux_res = Lib(i, aux_vec);
+          /* TODO: do we always just get one result value? */
+          aux_res->values[0] = Lib(i, aux_vec);
           /* you saw that right, a goto ! */
           goto op_return;
         } else {
