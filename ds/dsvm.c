@@ -369,11 +369,19 @@ void Run(VMLDSB *vmldsb) {
         ip += 6;
         if (env_tmp->values[0]) PrintValue(env_tmp->values[0]);
         if (aux_res->values[0]) PrintValue(aux_res->values[0]);
+        if (env_lex->values[0]) PrintValue(env_lex->values[0]);
+        printf("%i %i %i\n", aux_vec, aux_vec->length, aux_vec->values[0]);
+        printf("%i\n", GetVector(
+            s,
+            env_lib, env_glo, aux_res,
+            env_tmp, aux_vec, env_lex
+            )->values[0]);
         DSValue *from = GetVector(
             s,
             env_lib, env_glo, aux_res,
             env_tmp, aux_vec, env_lex
             )->values[i];
+        printf("deed\n");
         GetVector(
             t,
             env_lib, env_glo, aux_res,
