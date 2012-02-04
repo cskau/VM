@@ -265,6 +265,14 @@ DSVector *GetVector(
   return NULL;
 }
 
+/* TODO: inline the below ! */
+DSVector *CreateVector(unsigned int length) {
+  DSVector *new_vec = malloc(sizeof(DSVector));
+  new_vec->length = length;
+  new_vec->values = calloc(length, sizeof(DSValue*));
+  return new_vec;
+}
+
 DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
   DSVector *new_vec = malloc(sizeof(DSVector));
   new_vec->length = (env_lex != NULL) ? (env_lex->length + 1) : 1;
@@ -285,7 +293,7 @@ void Run(VMLDSB *vmldsb) {
   DSVector *env_lex = NULL;
   DSVector *env_lib, *aux_vec;
   DSVector *env_glo, *env_tmp, *aux_res;
-  uint32_t *cont = NULL;
+  DSVector *cont = NULL;
   
   uint8_t op = 0;
   unsigned int ip = 0;
@@ -308,13 +316,15 @@ void Run(VMLDSB *vmldsb) {
       case OP_NOP:
         break;
       case OP_LOAD:
-        printf("Unimplemented opcode: OP_LOAD\n");
         v = instructions[ip + 1];
         x = instructions[ip + 2];
         t = instructions[ip + 6];
         j = instructions[ip + 7];
+        printf(
+            "Unimplemented opcode: OP_LOAD (v, x, t, j) = (%i, %i, %i, %i)\n",
+            v, x, t, j);
         ip += 8;
-        printf("(v, x, t, j) = (%i, %i, %i, %i)\n", v, x, t, j);
+        /* TODO: do we do anything special to load closures ? */
         GetVector(
             t,
             env_lib, env_glo, aux_res,
@@ -322,14 +332,12 @@ void Run(VMLDSB *vmldsb) {
             )->values[j] = CreateValue(v, x);
         break;
       case OP_MOVE:
-        printf("Unimplemented opcode: OP_MOVE\n");
         s = instructions[ip + 1];
         i = instructions[ip + 2];
         t = instructions[ip + 4];
         j = instructions[ip + 5];
-        printf("(s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
+        printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
         ip += 6;
-        /* Unknown: should moved-from vector entry be zeroed after move ? */
         /* TODO: my eyes.. !! */
         GetVector(
             s,
@@ -340,32 +348,30 @@ void Run(VMLDSB *vmldsb) {
                 env_lib, env_glo, aux_res,
                 env_tmp, aux_vec, env_lex
                 )->values[j];
+        /* TODO: should moved-from vector entry be zeroed after move ? */
         break;
       case OP_NEW_VEC:
-        printf("Unimplemented opcode: OP_NEW_VEC\n");
         n = instructions[ip + 1];
+        printf("OP_NEW_VEC (n) = (%i)\n", n);
         ip += 2;
-        aux_vec = malloc(sizeof(DSVector));
-        aux_vec->length = n;
-        aux_vec->values = calloc(n, sizeof(DSValue*));
+        aux_vec = CreateVector(n);
         break;
       case OP_EXTEND:
-        printf("Unimplemented opcode: OP_EXTEND\n");
+        printf("OP_EXTEND\n");
         env_lex = ExtendVector(env_lex, aux_vec);
         break;
       case OP_JUMP:
-        printf("Unimplemented opcode: OP_JUMP\n");
         l = instructions[ip + 1];
+        printf("OP_JUMP (l) = (%i)\n", l);
         ip += 4;
         /* Compensate for increment before looping */
         ip = (l - 1);
         break;
       case OP_JUMP_IF_FALSE:
-        printf("Unimplemented opcode: OP_JUMP_IF_FALSE\n");
         q = instructions[ip + 1];
         i = instructions[ip + 2];
         l = instructions[ip + 4];
-        printf("(q, i, l) = (%i, %i, %i)\n", q, i, l);
+        printf("OP_JUMP_IF_FALSE (q, i, l) = (%i, %i, %i)\n", q, i, l);
         ip += 7;
         DSValue *value = GetVector(
             q,
@@ -378,10 +384,9 @@ void Run(VMLDSB *vmldsb) {
         }
         break;
       case OP_TAIL_CALL:
-        printf("Unimplemented opcode: OP_TAIL_CALL\n");
         q = instructions[ip + 1];
         i = instructions[ip + 2];
-        printf("(q, i) = (%i, %i)\n", q, i);
+        printf("Unimplemented opcode: OP_TAIL_CALL (q, i) = (%i, %i)\n", q, i);
         ip += 3;
         if (q == SCP_LIB) {
           aux_res = Lib(i, aux_vec);
@@ -405,12 +410,20 @@ void Run(VMLDSB *vmldsb) {
         }
         break;
       case OP_CALL:
-        printf("Unimplemented opcode: OP_CALL\n");
         q = instructions[ip + 1];
         i = instructions[ip + 2];
         n = instructions[ip + 4];
-        printf("(q, i, n) = (%i, %i, %i)\n", q, i, n);
+        printf(
+            "Unimplemented opcode: OP_CALL (q, i, n) = (%i, %i, %i)\n",
+            q, i, n);
         ip += 5;
+        /* push to continuation stack */
+        DSVector *new_vec = CreateVector((n + 3));
+        new_vec->values[0] = cont;
+        new_vec->values[1] = env_lex;
+        new_vec->values[2] = (ip + 1);
+        memcpy(new_vec->values[3], env_tmp->values, (n * sizeof(DSValue*)));
+        cont = new_vec;
         /* TODO: look at possibility of fall-through, since call leads to 
           tail-call, and tail-call leads to return */
         break;
@@ -421,6 +434,15 @@ void Run(VMLDSB *vmldsb) {
         if (cont == NULL) {
           PrintValue(&aux_res->values[0]);
           return;
+        } else {
+          /* pop from continuation stack */
+          memcpy(
+              env_tmp->values,
+              cont->values[3],
+              ((cont->length - 3) * sizeof(DSValue*)));
+          ip = cont->values[2];
+          env_lex = cont->values[1];
+          cont = cont->values[0];
         }
         break;
       default:
