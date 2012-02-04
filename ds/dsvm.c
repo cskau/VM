@@ -244,10 +244,10 @@ DSValue *Lib(uint16_t i, DSValue **aux_vec) {
 }
 
 /* TODO: inline, and possibly add macro to auto assign all vector params */
-DSValue **GetVector(
+DSVector *GetVector(
     int8_t t,
-    DSValue **env_lib, DSValue **env_glo, DSValue **aux_res,
-    DSValue **env_tmp, DSValue **aux_vec, DSValue **env_lex) {
+    DSVector *env_lib, DSVector *env_glo, DSVector *aux_res,
+    DSVector *env_tmp, DSVector *aux_vec, DSVector *env_lex) {
   switch (t) {
     case SCP_LIB:
       return env_lib;
@@ -260,17 +260,31 @@ DSValue **GetVector(
     case SCP_VEC:
       return aux_vec;
     default:
-      return ((uint32_t *)env_lex[t]);
+      return env_lex->vectors[t];
   }
   return NULL;
 }
 
+DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
+  DSVector *new_vec = malloc(sizeof(DSVector));
+  new_vec->length = (env_lex != NULL) ? (env_lex->length + 1) : 1;
+  new_vec->vectors = malloc(new_vec->length * sizeof(DSVector*));
+  new_vec->vectors[0] = aux_vec;
+  if (env_lex != NULL) {
+    memcpy(
+        new_vec->vectors[1],
+        env_lex->vectors,
+        (env_lex->length * sizeof(DSVector*)));
+    free(env_lex);
+  }
+  return new_vec;
+}
+
 void Run(VMLDSB *vmldsb) {
   unsigned char* instructions = vmldsb->instructions;
-  DSVector *env_lex;
-  DSValue **env_lib, **aux_vec;
-  DSValue **env_glo, **env_tmp;
-  DSVector *aux_res;
+  DSVector *env_lex = NULL;
+  DSVector *env_lib, *aux_vec;
+  DSVector *env_glo, *env_tmp, *aux_res;
   uint32_t *cont = NULL;
   
   uint8_t op = 0;
@@ -281,9 +295,12 @@ void Run(VMLDSB *vmldsb) {
   uint16_t i, j, n;
   int8_t q, s, t, v;
 
-  aux_res = {};
-  env_tmp = malloc(vmldsb->max_tmp * sizeof(DSValue*));
-  env_glo = malloc(vmldsb->max_glo * sizeof(DSValue*));
+  aux_res = malloc(sizeof(DSVector));
+  aux_res->values = malloc(vmldsb->max_res * sizeof(DSValue*));
+  env_tmp = malloc(sizeof(DSVector));
+  env_tmp->values = malloc(vmldsb->max_tmp * sizeof(DSValue*));
+  env_glo = malloc(sizeof(DSVector));
+  env_glo->values = malloc(vmldsb->max_glo * sizeof(DSValue*));
 
   while (1) {
     op = instructions[ip];
@@ -300,9 +317,9 @@ void Run(VMLDSB *vmldsb) {
         printf("(v, x, t, j) = (%i, %i, %i, %i)\n", v, x, t, j);
         GetVector(
             t,
-            &env_lib, &env_glo, &aux_res,
-            &env_tmp, &aux_vec, &env_lex
-            )[j] = CreateValue(v, x);
+            env_lib, env_glo, aux_res,
+            env_tmp, aux_vec, env_lex
+            )->values[j] = CreateValue(v, x);
         break;
       case OP_MOVE:
         printf("Unimplemented opcode: OP_MOVE\n");
@@ -316,32 +333,25 @@ void Run(VMLDSB *vmldsb) {
         /* TODO: my eyes.. !! */
         GetVector(
             s,
-            &env_lib, &env_glo, &aux_res,
-            &env_tmp, &aux_vec, &env_lex
-            )[i] = GetVector(
+            env_lib, env_glo, aux_res,
+            env_tmp, aux_vec, env_lex
+            )->values[i] = GetVector(
                 t,
-                &env_lib, &env_glo, &aux_res,
-                &env_tmp, &aux_vec, &env_lex
-                )[j];
+                env_lib, env_glo, aux_res,
+                env_tmp, aux_vec, env_lex
+                )->values[j];
         break;
       case OP_NEW_VEC:
         printf("Unimplemented opcode: OP_NEW_VEC\n");
         n = instructions[ip + 1];
         ip += 2;
-        aux_vec = calloc(n, sizeof(DSValue*));
+        aux_vec = malloc(sizeof(DSVector));
+        aux_vec->length = n;
+        aux_vec->values = calloc(n, sizeof(DSValue*));
         break;
       case OP_EXTEND:
         printf("Unimplemented opcode: OP_EXTEND\n");
-        DSVector *new_vec = malloc(sizeof(DSVector));
-        new_vec->length = (env_lex != NULL) ? env_lex->length : 1;
-        new_vec->vectors = malloc(new_vec->length * sizeof(DSVector));
-        new_vec->vectors[0] = aux_vec;
-        if (env_lex != NULL) {
-          /*
-          memcpy(new_vec->vectors[1], env_lex);
-          */
-        }
-        env_lex = new_vec;
+        env_lex = ExtendVector(env_lex, aux_vec);
         break;
       case OP_JUMP:
         printf("Unimplemented opcode: OP_JUMP\n");
@@ -357,12 +367,12 @@ void Run(VMLDSB *vmldsb) {
         l = instructions[ip + 4];
         printf("(q, i, l) = (%i, %i, %i)\n", q, i, l);
         ip += 7;
-        DSValue *vector = GetVector(
+        DSValue *value = GetVector(
             q,
-            &env_lib, &env_glo, &aux_res,
-            &env_tmp, &aux_vec, &env_lex
-            )[i];
-        if (vector->type == BOOL && vector->value == 0) {
+            env_lib, env_glo, aux_res,
+            env_tmp, aux_vec, env_lex
+            )->values[i];
+        if (value->type == BOOL && value->value == 0) {
           /* Compensate for increment before looping */
           ip = (l - 1);
         }
@@ -380,21 +390,15 @@ void Run(VMLDSB *vmldsb) {
         } else {
           DSValue *close = GetVector(
               q,
-              &env_lib, &env_glo, &aux_res,
-              &env_tmp, &aux_vec, &env_lex
-              )[i];
+              env_lib, env_glo, aux_res,
+              env_tmp, aux_vec, env_lex
+              )->values[i];
           if (close->type == CLOSE_FLAT || close->type == CLOSE_DEEP) {
-            /* TODO: arity check */
-            /*
-            if (vmldsb->lambda_pool[close->index].arity == ??) {
+            if (vmldsb->lambda_pool[close->index].arity != aux_vec->length) {
               printf("Error: Arity mismatch!\n");
               exit(-1);
             }
-            */
-            DSValue **new_env_lex = malloc(2 * sizeof(DSValue **));
-            new_env_lex[1] = env_lex;
-            new_env_lex[0] = aux_vec;
-            env_lex = new_env_lex[0];
+            env_lex = ExtendVector(env_lex, aux_vec);
             /* Compensate for increase before looping */
             ip = (vmldsb->lambda_pool[close->index].code - 1);
           }
@@ -415,7 +419,7 @@ void Run(VMLDSB *vmldsb) {
         /* see OP_TAIL_CALL above */
         op_return:
         if (cont == NULL) {
-          PrintValue(&aux_res[0]);
+          PrintValue(&aux_res->values[0]);
           return;
         }
         break;
