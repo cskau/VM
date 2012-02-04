@@ -197,16 +197,16 @@ void PrintValue(DSValue *value) {
       printf("nil\n");
       break;
     case BOOL:
-      printf("%s\n", value->value ? "True" : "False");
+      printf("%s\n", value->value ? "#t" : "#f");
       break;
     case INT:
       printf("%i\n", value->value);
       break;
     case CHAR:
-      printf("%c\n", value->code);
+      printf("#\\%c\n", value->code);
       break;
     case STR:
-      printf("%u\n", value->index);
+      printf("\"%u\"\n", value->index);
       break;
     case SYM:
       printf("%u\n", value->index);
