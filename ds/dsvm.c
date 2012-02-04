@@ -185,11 +185,35 @@ VMLDSB *LoadDSBOrDie(char *fname) {
 
 void PrintValue(DSValue *value) {
   switch (value->type) {
+    case NIL:
+      printf("nil\n");
+      break;
+    case BOOL:
+      printf("%s\n", value->value ? "True" : "False");
+      break;
     case INT:
       printf("%i\n", value->value);
       break;
+    case CHAR:
+      printf("%c\n", value->code);
+      break;
+    case STR:
+      printf("%u\n", value->index);
+      break;
+    case SYM:
+      printf("%u\n", value->index);
+      break;
+    case CLOSE_FLAT:
+      printf("close-flat (%u)\n", value->index);
+      break;
+    case CLOSE_DEEP:
+      printf("close-deep (%u)\n", value->index);
+      break;
+    case VOID:
+      printf("void\n");
+      break;
     default:
-      printf("Unimplemented printing method.. :(\n");
+      printf("Unimplemented printing method: %i\n", value->type);
   }
 }
 
@@ -259,6 +283,8 @@ void Run(VMLDSB *vmldsb) {
         t = instructions[ip + 6];
         j = instructions[ip + 7];
         ip += 8;
+        printf("(v, x, t, j) = (%i, %i, %i, %i)\n", v, x, t, j);
+        PrintValue(CreateValue(v, x));
         GetVector(
             t,
             &env_lib, &env_glo, &aux_res,
@@ -297,6 +323,8 @@ void Run(VMLDSB *vmldsb) {
         printf("Unimplemented opcode: OP_JUMP\n");
         l = instructions[ip + 1];
         ip += 4;
+        /* Compensate for increment before looping */
+        ip = (l - 1);
         break;
       case OP_JUMP_IF_FALSE:
         printf("Unimplemented opcode: OP_JUMP_IF_FALSE\n");
@@ -304,6 +332,15 @@ void Run(VMLDSB *vmldsb) {
         i = instructions[ip + 2];
         l = instructions[ip + 4];
         printf("(q, i, l) = (%i, %i, %i)\n", q, i, l);
+        DSValue *vector = GetVector(
+            q,
+            &env_lib, &env_glo, &aux_res,
+            &env_tmp, &aux_vec, &env_lex
+            )[i];
+        if (vector->type == BOOL && vector->value == 0) {
+          /* Compensate for increment before looping */
+          ip = (l - 1);
+        }
         ip += 7;
         break;
       case OP_TAIL_CALL:
