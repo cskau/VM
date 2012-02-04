@@ -280,7 +280,7 @@ DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
   new_vec->vectors[0] = aux_vec;
   if (env_lex != NULL) {
     memcpy(
-        new_vec->vectors[1],
+        &new_vec->vectors[1],
         env_lex->vectors,
         (env_lex->length * sizeof(DSVector*)));
     free(env_lex);
@@ -289,12 +289,12 @@ DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
 }
 
 void Run(VMLDSB *vmldsb) {
-  unsigned char* instructions = vmldsb->instructions;
-  DSVector *env_lex = NULL;
-  DSVector *env_lib, *aux_vec;
   DSVector *env_glo, *env_tmp, *aux_res;
+  DSVector *env_lib, *aux_vec;
+  DSVector *env_lex = NULL;
   DSVector *cont = NULL;
   
+  unsigned char* instructions = vmldsb->instructions;
   uint8_t op = 0;
   unsigned int ip = 0;
 
@@ -303,6 +303,7 @@ void Run(VMLDSB *vmldsb) {
   uint16_t i, j, n;
   int8_t q, s, t, v;
 
+  /* init from dsb info */
   aux_res = malloc(sizeof(DSVector));
   aux_res->values = malloc(vmldsb->max_res * sizeof(DSValue*));
   env_tmp = malloc(sizeof(DSVector));
@@ -339,16 +340,20 @@ void Run(VMLDSB *vmldsb) {
         printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
         ip += 6;
         /* TODO: my eyes.. !! */
-        GetVector(
-            s,
-            env_lib, env_glo, aux_res,
-            env_tmp, aux_vec, env_lex
-            )->values[i] = GetVector(
+        /* TODO: create new DSValue */
+        memcpy(
+            &GetVector(
+                s,
+                env_lib, env_glo, aux_res,
+                env_tmp, aux_vec, env_lex
+                )->values[i],
+            &GetVector(
                 t,
                 env_lib, env_glo, aux_res,
                 env_tmp, aux_vec, env_lex
-                )->values[j];
-        /* TODO: should moved-from vector entry be zeroed after move ? */
+                )->values[j],
+            sizeof(DSValue));
+        /* TODO: should moved-from vector entry be zero/void/nil after move ? */
         break;
       case OP_NEW_VEC:
         n = instructions[ip + 1];
@@ -431,18 +436,18 @@ void Run(VMLDSB *vmldsb) {
         printf("Unimplemented opcode: OP_RETURN\n");
         /* see OP_TAIL_CALL above */
         op_return:
-        if (cont == NULL) {
-          PrintValue(&aux_res->values[0]);
-          return;
-        } else {
+        if (cont != NULL) {
           /* pop from continuation stack */
           memcpy(
               env_tmp->values,
               cont->values[3],
               ((cont->length - 3) * sizeof(DSValue*)));
-          ip = cont->values[2];
+          ip = (cont->values[2] - 1);
           env_lex = cont->values[1];
           cont = cont->values[0];
+        } else {
+          PrintValue(&aux_res->values[0]);
+          return;
         }
         break;
       default:
