@@ -358,20 +358,16 @@ void Run(VMLDSB *vmldsb) {
         j = instructions[ip + 5];
         printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
         ip += 6;
-        /* TODO: my eyes.. !! */
-        /* TODO: create new DSValue */
-        memcpy(
-            &GetVector(
-                s,
-                env_lib, env_glo, aux_res,
-                env_tmp, aux_vec, env_lex
-                )->values[i],
-            &GetVector(
-                t,
-                env_lib, env_glo, aux_res,
-                env_tmp, aux_vec, env_lex
-                )->values[j],
-            sizeof(DSValue));
+        DSValue *from = GetVector(
+            s,
+            env_lib, env_glo, aux_res,
+            env_tmp, aux_vec, env_lex
+            )->values[i];
+        GetVector(
+            t,
+            env_lib, env_glo, aux_res,
+            env_tmp, aux_vec, env_lex
+            )->values[j] = CreateValue(from->type, from->value);
         /* TODO: should moved-from vector entry be zero/void/nil after move ? */
         break;
       case OP_NEW_VEC:
