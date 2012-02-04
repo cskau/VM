@@ -225,17 +225,27 @@ void PrintValue(DSValue *value) {
   }
 }
 
-DSValue *Lib(uint16_t i, DSValue **aux_vec) {
+DSValue *Lib(uint16_t i, DSVector *aux_vec) {
+  /* TODO: arity checking? */
   switch (i) {
     case LIB_INTEGERQ:
-      return CreateValue(BOOL, (aux_vec[0]->type == INT ? 1 : 0));
+      CheckArityOrDie(1, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->type == INT ? 1 : 0));
       break;
     case LIB_PLUS:
-      return CreateValue(INT, (aux_vec[0]->value + aux_vec[1]->value));
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          INT,
+          (aux_vec->values[0]->value + aux_vec->values[1]->value));
       break;
     case LIB_EQ:
       /* TODO: type checking? */
-      return CreateValue(BOOL, (aux_vec[0]->value == aux_vec[1]->value));
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->value == aux_vec->values[1]->value));
       break;
     default:
       printf("Unimplemented or unknown library function: %i\n", i);
@@ -286,6 +296,15 @@ DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
     free(env_lex);
   }
   return new_vec;
+}
+
+void CheckArityOrDie(unsigned int want, unsigned int got) {
+  if (want != got) {
+    printf(
+        "Error: Arity mismatch!\n  Want %i, but got %i\n",
+        want, got);
+    exit(-1);
+  }
 }
 
 void Run(VMLDSB *vmldsb) {
@@ -393,6 +412,7 @@ void Run(VMLDSB *vmldsb) {
         i = instructions[ip + 2];
         printf("Unimplemented opcode: OP_TAIL_CALL (q, i) = (%i, %i)\n", q, i);
         ip += 3;
+        op_tail_call:
         if (q == SCP_LIB) {
           aux_res = Lib(i, aux_vec);
           /* you saw that right, a goto ! */
@@ -404,10 +424,9 @@ void Run(VMLDSB *vmldsb) {
               env_tmp, aux_vec, env_lex
               )->values[i];
           if (close->type == CLOSE_FLAT || close->type == CLOSE_DEEP) {
-            if (vmldsb->lambda_pool[close->index].arity != aux_vec->length) {
-              printf("Error: Arity mismatch!\n");
-              exit(-1);
-            }
+            CheckArityOrDie(
+                vmldsb->lambda_pool[close->index].arity,
+                aux_vec->length);
             env_lex = ExtendVector(env_lex, aux_vec);
             /* Compensate for increase before looping */
             ip = (vmldsb->lambda_pool[close->index].code - 1);
@@ -426,11 +445,12 @@ void Run(VMLDSB *vmldsb) {
         DSVector *new_vec = CreateVector((n + 3));
         new_vec->values[0] = cont;
         new_vec->values[1] = env_lex;
-        new_vec->values[2] = (ip + 1);
+        new_vec->values[2] = ip;
         memcpy(new_vec->values[3], env_tmp->values, (n * sizeof(DSValue*)));
         cont = new_vec;
         /* TODO: look at possibility of fall-through, since call leads to 
           tail-call, and tail-call leads to return */
+        goto op_tail_call;
         break;
       case OP_RETURN:
         printf("Unimplemented opcode: OP_RETURN\n");
@@ -442,7 +462,7 @@ void Run(VMLDSB *vmldsb) {
               env_tmp->values,
               cont->values[3],
               ((cont->length - 3) * sizeof(DSValue*)));
-          ip = (cont->values[2] - 1);
+          ip = cont->values[2];
           env_lex = cont->values[1];
           cont = cont->values[0];
         } else {
