@@ -207,6 +207,28 @@ DSValue *Lib(uint16_t i, DSValue **aux_vec) {
   return NULL;
 }
 
+/* TODO: inline, and possibly add macro to auto assign all vector params */
+DSValue **GetVector(
+    int8_t t,
+    DSValue **env_lib, DSValue **env_glo, DSValue **aux_res,
+    DSValue **env_tmp, DSValue **aux_vec, DSValue **env_lex) {
+  switch (t) {
+    case SCP_LIB:
+      return env_lib;
+    case SCP_GLO:
+      return env_glo;
+    case SCP_RES:
+      return aux_res;
+    case SCP_TMP:
+      return env_tmp;
+    case SCP_VEC:
+      return aux_vec;
+    default:
+      return ((uint32_t *)env_lex[t]);
+  }
+  return NULL;
+}
+
 void Run(VMLDSB *vmldsb) {
   unsigned char* instructions = vmldsb->instructions;
   DSValue **env_lib, **env_lex, **aux_vec;
@@ -237,33 +259,11 @@ void Run(VMLDSB *vmldsb) {
         t = instructions[ip + 6];
         j = instructions[ip + 7];
         ip += 8;
-        DSValue *new_value = CreateValue(v, x);
-        switch (t) {
-          case SCP_LIB:
-            printf("env_lib[%i]\n", j);
-            env_lib[j] = new_value;
-            break;
-          case SCP_GLO:
-            printf("env_glo[%i]\n", j);
-            env_glo[j] = new_value;
-            break;
-          case SCP_RES:
-            printf("aux_res[%i]\n", j);
-            aux_res[j] = new_value;
-            break;
-          case SCP_TMP:
-            printf("env_tmp[%i]\n", j);
-            env_tmp[j] = new_value;
-            break;
-          case SCP_VEC:
-            printf("aux_vec[%i]\n", j);
-            aux_vec[j] = new_value;
-            break;
-          default:
-            printf("env-lex[%i]\n", j);
-            ((uint32_t *)env_lex[t])[j] = new_value;
-            break;
-        }
+        GetVector(
+            t,
+            &env_lib, &env_glo, &aux_res,
+            &env_tmp, &aux_vec, &env_lex
+            )[j] = CreateValue(v, x);
         break;
       case OP_MOVE:
         printf("Unimplemented opcode: OP_MOVE\n");
@@ -271,7 +271,18 @@ void Run(VMLDSB *vmldsb) {
         i = instructions[ip + 2];
         t = instructions[ip + 4];
         j = instructions[ip + 5];
-        ip += 8;
+        ip += 6;
+        /* Unknown: should moved-from vector entry be zeroed after move ? */
+        /* TODO: my eyes.. !! */
+        GetVector(
+            s,
+            &env_lib, &env_glo, &aux_res,
+            &env_tmp, &aux_vec, &env_lex
+            )[i] = GetVector(
+                t,
+                &env_lib, &env_glo, &aux_res,
+                &env_tmp, &aux_vec, &env_lex
+                )[j];
         break;
       case OP_NEW_VEC:
         printf("Unimplemented opcode: OP_NEW_VEC\n");
@@ -292,12 +303,14 @@ void Run(VMLDSB *vmldsb) {
         q = instructions[ip + 1];
         i = instructions[ip + 2];
         l = instructions[ip + 4];
+        printf("(q, i, l) = (%i, %i, %i)\n", q, i, l);
         ip += 7;
         break;
       case OP_TAIL_CALL:
         printf("Unimplemented opcode: OP_TAIL_CALL\n");
         q = instructions[ip + 1];
         i = instructions[ip + 2];
+        printf("(q, i) = (%i, %i)\n", q, i);
         ip += 3;
         if (q == SCP_LIB) {
           aux_res = Lib(i, aux_vec);
