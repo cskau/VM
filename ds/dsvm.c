@@ -193,13 +193,13 @@ void PrintValue(DSValue *value) {
   }
 }
 
-DSValue *Lib(uint16_t i, DSValue *aux_vec) {
+DSValue *Lib(uint16_t i, DSValue **aux_vec) {
   switch (i) {
     case LIB_INTEGERQ:
       printf("Unimplemented library function: LIB_INTEGERQ\n");
       break;
     case LIB_PLUS:
-      return CreateValue(INT, 42);
+      return CreateValue(INT, (aux_vec[0]->value + aux_vec[1]->value));
       break;
     default:
       printf("Unimplemented or unknown library function: %i\n", i);
@@ -299,10 +299,11 @@ void Run(VMLDSB *vmldsb) {
         q = instructions[ip + 1];
         i = instructions[ip + 2];
         ip += 3;
-        printf("%i %i\n", q, i);
-        aux_res = Lib(i, aux_vec);
-         /* you saw that right, a goto ! */
-        goto op_return;
+        if (q == SCP_LIB) {
+          aux_res = Lib(i, aux_vec);
+          /* you saw that right, a goto ! */
+          goto op_return;
+        }
         break;
       case OP_CALL:
         printf("Unimplemented opcode: OP_CALL\n");
@@ -310,7 +311,6 @@ void Run(VMLDSB *vmldsb) {
         i = instructions[ip + 2];
         n = instructions[ip + 4];
         ip += 5;
-        printf("%i %i %i\n", q, i, n);
         break;
       case OP_RETURN:
         printf("Unimplemented opcode: OP_RETURN\n");
