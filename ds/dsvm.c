@@ -331,9 +331,10 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_EXTEND:
         printf("Unimplemented opcode: OP_EXTEND\n");
-        DSValue **new_env_lex = malloc(2 * sizeof(DSValue **));
-        new_env_lex[1] = env_lex;
-        env_lex = new_env_lex[0];
+        DSVector *new_env_lex = malloc(sizeof(DSVector));
+        new_env_lex->length = (env_lex != NULL) ? (env_lex->length + 1) : 1;
+        new_env_lex->vectors[0] = aux_vec;
+        env_lex = new_env_lex;
         break;
       case OP_JUMP:
         printf("Unimplemented opcode: OP_JUMP\n");
