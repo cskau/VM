@@ -9,27 +9,6 @@
     http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
 */
 
-/* read binary data, adjust endianess */
-uint32_t Read32OrDie(FILE *file) {
-  uint32_t res = 0;
-  res |= getc(file);
-  res |= (getc(file) << 8);
-  res |= (getc(file) << 16);
-  res |= (getc(file) << 24);
-  return res;
-}
-
-uint16_t Read16OrDie(FILE *file) {
-  uint16_t res = 0;
-  res |= getc(file);
-  res |= (getc(file) << 8);
-  return res;
-}
-
-uint8_t Read8OrDie(FILE *file) {
-  return getc(file);
-}
-
 typedef struct {
   /* Program limits */
   uint16_t max_glo, max_tmp, max_res;
@@ -58,6 +37,35 @@ typedef struct {
   uint32_t signature_length;
   unsigned char *compiler_signature;
 } VMLDSB;
+
+typedef struct DSVector_ {
+  unsigned int length;
+  union {
+    DSValue **values;
+    struct DSVector_ **vectors;
+  }
+} DSVector;
+
+/* read binary data, adjust endianess */
+uint32_t Read32OrDie(FILE *file) {
+  uint32_t res = 0;
+  res |= getc(file);
+  res |= (getc(file) << 8);
+  res |= (getc(file) << 16);
+  res |= (getc(file) << 24);
+  return res;
+}
+
+uint16_t Read16OrDie(FILE *file) {
+  uint16_t res = 0;
+  res |= getc(file);
+  res |= (getc(file) << 8);
+  return res;
+}
+
+uint8_t Read8OrDie(FILE *file) {
+  return getc(file);
+}
 
 /* VML DSB file layout:
   • Magic word
@@ -220,10 +228,14 @@ void PrintValue(DSValue *value) {
 DSValue *Lib(uint16_t i, DSValue **aux_vec) {
   switch (i) {
     case LIB_INTEGERQ:
-      printf("Unimplemented library function: LIB_INTEGERQ\n");
+      return CreateValue(BOOL, (aux_vec[0]->type == INT ? 1 : 0));
       break;
     case LIB_PLUS:
       return CreateValue(INT, (aux_vec[0]->value + aux_vec[1]->value));
+      break;
+    case LIB_EQ:
+      /* TODO: type checking? */
+      return CreateValue(BOOL, (aux_vec[0]->value == aux_vec[1]->value));
       break;
     default:
       printf("Unimplemented or unknown library function: %i\n", i);
@@ -255,7 +267,7 @@ DSValue **GetVector(
 
 void Run(VMLDSB *vmldsb) {
   unsigned char* instructions = vmldsb->instructions;
-  DSValue **env_lex;
+  DSVector *env_lex;
   DSValue **env_lib, **aux_vec;
   DSValue **env_glo, **env_tmp, **aux_res;
   uint32_t *cont = NULL;
@@ -357,6 +369,27 @@ void Run(VMLDSB *vmldsb) {
           aux_res = Lib(i, aux_vec);
           /* you saw that right, a goto ! */
           goto op_return;
+        } else {
+          DSValue *close = GetVector(
+              q,
+              &env_lib, &env_glo, &aux_res,
+              &env_tmp, &aux_vec, &env_lex
+              )[i];
+          if (close->type == CLOSE_FLAT || close->type == CLOSE_DEEP) {
+            /* TODO: arity check */
+            /*
+            if (vmldsb->lambda_pool[close->index].arity == ??) {
+              printf("Error: Arity mismatch!\n");
+              exit(-1);
+            }
+            */
+            DSValue **new_env_lex = malloc(2 * sizeof(DSValue **));
+            new_env_lex[1] = env_lex;
+            new_env_lex[0] = aux_vec;
+            env_lex = new_env_lex[0];
+            /* Compensate for increase before looping */
+            ip = (vmldsb->lambda_pool[close->index].code - 1);
+          }
         }
         break;
       case OP_CALL:
@@ -364,7 +397,10 @@ void Run(VMLDSB *vmldsb) {
         q = instructions[ip + 1];
         i = instructions[ip + 2];
         n = instructions[ip + 4];
+        printf("(q, i, n) = (%i, %i, %i)\n", q, i, n);
         ip += 5;
+        /* TODO: look at possibility of fall-through, since call leads to 
+          tail-call, and tail-call leads to return */
         break;
       case OP_RETURN:
         printf("Unimplemented opcode: OP_RETURN\n");
