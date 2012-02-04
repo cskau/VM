@@ -255,7 +255,8 @@ DSValue **GetVector(
 
 void Run(VMLDSB *vmldsb) {
   unsigned char* instructions = vmldsb->instructions;
-  DSValue **env_lib, **env_lex, **aux_vec;
+  DSValue **env_lex;
+  DSValue **env_lib, **aux_vec;
   DSValue **env_glo, **env_tmp, **aux_res;
   uint32_t *cont = NULL;
   
@@ -284,7 +285,6 @@ void Run(VMLDSB *vmldsb) {
         j = instructions[ip + 7];
         ip += 8;
         printf("(v, x, t, j) = (%i, %i, %i, %i)\n", v, x, t, j);
-        PrintValue(CreateValue(v, x));
         GetVector(
             t,
             &env_lib, &env_glo, &aux_res,
@@ -297,6 +297,7 @@ void Run(VMLDSB *vmldsb) {
         i = instructions[ip + 2];
         t = instructions[ip + 4];
         j = instructions[ip + 5];
+        printf("(s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
         ip += 6;
         /* Unknown: should moved-from vector entry be zeroed after move ? */
         /* TODO: my eyes.. !! */
@@ -318,6 +319,9 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_EXTEND:
         printf("Unimplemented opcode: OP_EXTEND\n");
+        DSValue **new_env_lex = malloc(2 * sizeof(DSValue **));
+        new_env_lex[1] = env_lex;
+        env_lex = new_env_lex[0];
         break;
       case OP_JUMP:
         printf("Unimplemented opcode: OP_JUMP\n");
@@ -332,6 +336,7 @@ void Run(VMLDSB *vmldsb) {
         i = instructions[ip + 2];
         l = instructions[ip + 4];
         printf("(q, i, l) = (%i, %i, %i)\n", q, i, l);
+        ip += 7;
         DSValue *vector = GetVector(
             q,
             &env_lib, &env_glo, &aux_res,
@@ -341,7 +346,6 @@ void Run(VMLDSB *vmldsb) {
           /* Compensate for increment before looping */
           ip = (l - 1);
         }
-        ip += 7;
         break;
       case OP_TAIL_CALL:
         printf("Unimplemented opcode: OP_TAIL_CALL\n");
