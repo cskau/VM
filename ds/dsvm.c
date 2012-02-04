@@ -145,7 +145,7 @@ VMLDSB *LoadDSBOrDie(char *fname) {
   new_dsb->lambda_count = Read32OrDie(file);
   new_dsb->lambda_pool = malloc(
       new_dsb->lambda_count * sizeof(new_dsb->lambda_pool));
-  for (i = 0; i < new_dsb->symbol_count; i++) {
+  for (i = 0; i < new_dsb->lambda_count; i++) {
     new_dsb->lambda_pool[i].arity = (int8_t)Read8OrDie(file);
     new_dsb->lambda_pool[i].code = Read32OrDie(file);
   }
