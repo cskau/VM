@@ -398,7 +398,10 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_LOAD:
         v = instructions[ip + 1];
-        x = instructions[ip + 2];
+        x = instructions[ip + 2]
+          | instructions[ip + 3] <<8
+          | instructions[ip + 4] <<16
+          | instructions[ip + 5] <<24;
         t = instructions[ip + 6];
         j = instructions[ip + 7];
         printf(
