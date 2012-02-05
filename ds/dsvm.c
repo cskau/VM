@@ -552,6 +552,9 @@ void Run(VMLDSB *vmldsb) {
             env_lex = ExtendVector(env_lex, aux_vec);
             /* Compensate for increase before looping */
             ip = (vmldsb->lambda_pool[close->index].code - 1);
+          } else if (close->type == FUNC_LIB) {
+            aux_res->values[0] = Lib(close->value, aux_vec);
+            goto op_return;
           }
         }
         break;
