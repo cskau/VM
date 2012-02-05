@@ -435,6 +435,8 @@ void Run(VMLDSB *vmldsb) {
   uint16_t i, j, n;
   int8_t q, s, t, v;
 
+  unsigned int k;
+
   /* init from dsb info */
   aux_res = CreateVector(vmldsb->max_res);
   env_tmp = CreateVector(vmldsb->max_tmp);
@@ -442,14 +444,18 @@ void Run(VMLDSB *vmldsb) {
 
   /* TODO: allow overriding lib functions */
   env_lib = CreateVector(55);
+  for (k = 0; k < 55; k++) {
+    /* Use special type to refer to lib func */
+    env_lib->values[k] = CreateValue(FUNC_LIB, k);
+  }
 
   while (1) {
-    /*
+    /**
     PrintCore(
         ip,
         env_lib, env_glo, aux_res,
         env_tmp, aux_vec, env_lex);
-    */
+    /**/
     op = instructions[ip];
     switch (op) {
       case OP_NOP:
@@ -562,7 +568,9 @@ void Run(VMLDSB *vmldsb) {
         new_vec->values[0] = cont;
         new_vec->values[1] = env_lex;
         new_vec->values[2] = ip;
-        memcpy(new_vec->values[3], env_tmp->values, (n * sizeof(DSValue*)));
+        for (; n > 0; n--) {
+          new_vec->values[(2 + n)] = CopyValue(&env_tmp[(n - 1)]);
+        }
         cont = new_vec;
         /* TODO: look at possibility of fall-through, since call leads to 
           tail-call, and tail-call leads to return */
@@ -573,11 +581,11 @@ void Run(VMLDSB *vmldsb) {
         /* see OP_TAIL_CALL above */
         op_return:
         if (cont != NULL) {
+          /* TODO: free old cont */
           /* pop from continuation stack */
-          memcpy(
-              env_tmp->values,
-              cont->values[3],
-              ((cont->length - 3) * sizeof(DSValue*)));
+          for (k = 0; k < (cont->length - 3); k++) {
+            env_tmp->values[k] = cont->values[(3 + k)];
+          }
           ip = cont->values[2];
           env_lex = cont->values[1];
           cont = cont->values[0];

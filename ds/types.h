@@ -22,6 +22,8 @@ enum ValueTypes {
   CLOSE_FLAT = 6,
   CLOSE_DEEP = 7,
   VOID = 8,
+  /* This is impl specific. Refers to lib function. */
+  FUNC_LIB = 9,
 };
 
 typedef struct {
@@ -43,6 +45,13 @@ DSValue *CreateValue(enum ValueTypes type, uint32_t value) {
   } else {
     new_value->index = (uint32_t)value;
   }
+  return new_value;
+};
+
+DSValue *CopyValue(DSValue *old_value) {
+  DSValue *new_value = malloc(sizeof(DSValue));
+  new_value->type = old_value->type;
+  new_value->value = old_value->value;
   return new_value;
 };
 
