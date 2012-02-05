@@ -225,8 +225,51 @@ void PrintValue(DSValue *value) {
   }
 }
 
+void PrintVector(DSVector *vector) {
+  int i;
+  if (vector != NULL) {
+    printf("(...){%u}\n", vector->length);
+    for (i = 0; i < vector->length; i++) {
+      if (vector->values && vector->values[i] != NULL) {
+        PrintValue(vector->values[i]);
+      } else {
+        printf("uninitialized value\n");
+      }
+    }
+  } else {
+    printf("uninitialized vector\n");
+  }
+}
+
+void PrintCore(
+    unsigned int ip,
+    DSVector *env_lib, DSVector *env_glo, DSVector *aux_res,
+    DSVector *env_tmp, DSVector *aux_vec, DSVector *env_lex) {
+  int i;
+  printf("ip: %u\n", ip);
+  printf("env_lex: ");
+  PrintVector(env_lex);
+  for (i = 0; env_lex && i < env_lex->length; i++) {
+    printf("env_lex[%u]: ", i);
+    PrintVector(env_lex->vectors[i]);
+  }
+  /*
+  printf("env_lib: ");
+  PrintVector(env_lib);
+  */
+  printf("env_tmp: ");
+  PrintVector(env_tmp);
+  printf("env_glo: ");
+  PrintVector(env_glo);
+  printf("aux_vec: ");
+  PrintVector(aux_vec);
+  printf("aux_res: ");
+  PrintVector(aux_res);
+}
+
 DSValue *Lib(uint16_t i, DSVector *aux_vec) {
   /* TODO: arity checking? */
+  /* TODO: check we're doing the parameters in right order */
   switch (i) {
     case LIB_INTEGERQ:
       CheckArityOrDie(1, aux_vec->length);
@@ -239,6 +282,18 @@ DSValue *Lib(uint16_t i, DSVector *aux_vec) {
       return CreateValue(
           INT,
           (aux_vec->values[0]->value + aux_vec->values[1]->value));
+      break;
+    case LIB_MINUS:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          INT,
+          (aux_vec->values[0]->value - aux_vec->values[1]->value));
+      break;
+    case LIB_TIMES:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          INT,
+          (aux_vec->values[0]->value * aux_vec->values[1]->value));
       break;
     case LIB_EQ:
       /* TODO: type checking? */
@@ -293,7 +348,7 @@ DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
         &new_vec->vectors[1],
         env_lex->vectors,
         (env_lex->length * sizeof(DSVector*)));
-    free(env_lex);
+    /*free(env_lex);*/
   }
   return new_vec;
 }
@@ -323,14 +378,20 @@ void Run(VMLDSB *vmldsb) {
   int8_t q, s, t, v;
 
   /* init from dsb info */
-  aux_res = malloc(sizeof(DSVector));
-  aux_res->values = malloc(vmldsb->max_res * sizeof(DSValue*));
-  env_tmp = malloc(sizeof(DSVector));
-  env_tmp->values = malloc(vmldsb->max_tmp * sizeof(DSValue*));
-  env_glo = malloc(sizeof(DSVector));
-  env_glo->values = malloc(vmldsb->max_glo * sizeof(DSValue*));
+  aux_res = CreateVector(vmldsb->max_res);
+  env_tmp = CreateVector(vmldsb->max_tmp);
+  env_glo = CreateVector(vmldsb->max_glo);
+
+  /* TODO: allow overriding lib functions */
+  env_lib = CreateVector(55);
 
   while (1) {
+    /*
+    PrintCore(
+        ip,
+        env_lib, env_glo, aux_res,
+        env_tmp, aux_vec, env_lex);
+    */
     op = instructions[ip];
     switch (op) {
       case OP_NOP:
@@ -410,7 +471,8 @@ void Run(VMLDSB *vmldsb) {
         ip += 3;
         op_tail_call:
         if (q == SCP_LIB) {
-          aux_res = Lib(i, aux_vec);
+          /* TODO: do we always just get one result value? */
+          aux_res->values[0] = Lib(i, aux_vec);
           /* you saw that right, a goto ! */
           goto op_return;
         } else {
@@ -462,7 +524,7 @@ void Run(VMLDSB *vmldsb) {
           env_lex = cont->values[1];
           cont = cont->values[0];
         } else {
-          PrintValue(&aux_res->values[0]);
+          PrintValue(aux_res->values[0]);
           return;
         }
         break;
