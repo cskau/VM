@@ -191,51 +191,59 @@ VMLDSB *LoadDSBOrDie(char *fname) {
   return new_dsb;
 }
 
-void PrintValue(DSValue *value) {
+void PrintValue(VMLDSB* dsb, DSValue *value, char* seperator) {
   switch (value->type) {
     case NIL:
-      printf("nil\n");
+      printf("nil");
       break;
     case BOOL:
-      printf("%s\n", value->value ? "#t" : "#f");
+      printf("%s", value->value ? "#t" : "#f");
       break;
     case INT:
-      printf("%i\n", value->value);
+      printf("%i", value->value);
       break;
     case CHAR:
-      printf("#\\%c\n", value->code);
+      printf("#\\%c", value->code);
       break;
     case STR:
-      printf("\"%u\"\n", value->index);
+      printf("\"%s\"", dsb->string_pool[value->index].string);
       break;
     case SYM:
-      printf("%u\n", value->index);
+      printf("%u", value->index);
       break;
     case CLOSE_FLAT:
-      printf("close-flat (%u)\n", value->index);
+      printf("close-flat (%u)", value->index);
       break;
     case CLOSE_DEEP:
-      printf("close-deep (%u)\n", value->index);
+      printf("close-deep (%u)", value->index);
       break;
     case VOID:
-      printf("void\n");
+      printf("void");
+      break;
+    case FUNC_LIB:
+      printf("lib(%u)", value->index);
       break;
     default:
-      printf("Unimplemented printing method: %i\n", value->type);
+      printf("Unimplemented printing method: %i", value->type);
   }
+  printf(seperator);
 }
 
-void PrintVector(DSVector *vector) {
+void PrintVector(DSVector *vector, int depth, char* seperator) {
   int i;
   if (vector != NULL) {
-    printf("(...){%u}\n", vector->length);
+    printf("(");
     for (i = 0; i < vector->length; i++) {
-      if (vector->values && vector->values[i] != NULL) {
-        PrintValue(vector->values[i]);
+      if (depth > 0 && vector->vectors && vector->vectors[i] != NULL) {
+        PrintVector(vector->vectors[i], (depth - 1), (i < (vector->length - 1) ? ", " : ""));
+      } else if (vector->values && vector->values[i] != NULL) {
+        /*vmldsb*/
+        PrintValue(NULL, vector->values[i], (i < (vector->length - 1) ? ", " : ""));
       } else {
-        printf("uninitialized value\n");
+        printf("uninitialized value");
       }
     }
+    printf("){%u}%s", vector->length, seperator);
   } else {
     printf("uninitialized vector\n");
   }
@@ -248,23 +256,25 @@ void PrintCore(
   int i;
   printf("ip: %u\n", ip);
   printf("env_lex: ");
-  PrintVector(env_lex);
+  PrintVector(env_lex, 1, "\n");
+  /*
   for (i = 0; env_lex && i < env_lex->length; i++) {
     printf("env_lex[%u]: ", i);
-    PrintVector(env_lex->vectors[i]);
+    PrintVector(env_lex->vectors[i], 0, "\n");
   }
-  /*
-  printf("env_lib: ");
-  PrintVector(env_lib);
   */
   printf("env_tmp: ");
-  PrintVector(env_tmp);
+  PrintVector(env_tmp, 0, "\n");
   printf("env_glo: ");
-  PrintVector(env_glo);
+  PrintVector(env_glo, 0, "\n");
   printf("aux_vec: ");
-  PrintVector(aux_vec);
+  PrintVector(aux_vec, 0, "\n");
   printf("aux_res: ");
-  PrintVector(aux_res);
+  PrintVector(aux_res, 0, "\n");
+  /*
+  printf("env_lib: ");
+  PrintVector(env_lib, 0, "\n");
+  */
 }
 
 DSValue *Lib(uint16_t i, DSVector *aux_vec) {
@@ -468,7 +478,16 @@ void Run(VMLDSB *vmldsb) {
         printf(
             "Unimplemented opcode: OP_LOAD (v, x, t, j) = (%i, %i, %i, %i)\n",
             v, x, t, j);
+        /**
+          printf("aux_vec: "); PrintVector(aux_vec, 0, "\n");
+          printf("env_lex: "); PrintVector(env_lex, 1, "\n");
+        /**/
         ip += 8;
+        /**
+        if (v == CLOSE_FLAT) {
+          PrintVector(aux_vec, 0, "\n");
+        }
+        /**/
         /* TODO: do we do anything special to load closures ? */
         GetVector(
             t,
@@ -482,6 +501,7 @@ void Run(VMLDSB *vmldsb) {
         t = instructions[ip + 4];
         j = instructions[ip + 5];
         printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
+          if (env_tmp && env_tmp->values) {printf("env_tmp: "); printf("%u\n", env_tmp->values[0]); /*PrintVector(env_tmp, 0, "\n");*/}
         ip += 6;
         DSValue *from = GetVector(
             s,
@@ -529,9 +549,17 @@ void Run(VMLDSB *vmldsb) {
         }
         break;
       case OP_TAIL_CALL:
+    /**
+    PrintCore(
+        ip,
+        env_lib, env_glo, aux_res,
+        env_tmp, aux_vec, env_lex);
+    /**/
         q = instructions[ip + 1];
         i = instructions[ip + 2];
         printf("Unimplemented opcode: OP_TAIL_CALL (q, i) = (%i, %i)\n", q, i);
+          printf("aux_vec: "); PrintVector(aux_vec, 0, "\n");
+          printf("env_lex: "); PrintVector(env_lex, 1, "\n");
         ip += 3;
         op_tail_call:
         if (q == SCP_LIB) {
@@ -556,9 +584,22 @@ void Run(VMLDSB *vmldsb) {
             aux_res->values[0] = Lib(close->value, aux_vec);
             goto op_return;
           }
+
+    /**
+    PrintCore(
+        ip,
+        env_lib, env_glo, aux_res,
+        env_tmp, aux_vec, env_lex);
+    /**/
         }
         break;
       case OP_CALL:
+    /**
+    PrintCore(
+        ip,
+        env_lib, env_glo, aux_res,
+        env_tmp, aux_vec, env_lex);
+    /**/
         q = instructions[ip + 1];
         i = instructions[ip + 2];
         n = instructions[ip + 4];
@@ -593,7 +634,7 @@ void Run(VMLDSB *vmldsb) {
           env_lex = cont->values[1];
           cont = cont->values[0];
         } else {
-          PrintValue(aux_res->values[0]);
+          PrintValue(vmldsb, aux_res->values[0], "\n");
           return;
         }
         break;
