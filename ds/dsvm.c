@@ -47,17 +47,19 @@ typedef struct DSVector_ {
 } DSVector;
 
 /* read binary data, adjust endianess */
-uint32_t Read32FromMemOrDie(char* ptr, uint32_t idx) {
-  return 
-    ptr[idx]
-    | ptr[idx + 1] <<8
-    | ptr[idx + 2] <<16
-    | ptr[idx + 3] <<24;
+uint32_t Read32FromMemOrDie(unsigned char *ptr, uint32_t idx) {
+  uint32_t res = 0;
+  res |= ptr[idx];
+  res |= (ptr[idx + 1] << 8);
+  res |= (ptr[idx + 2] << 16);
+  res |= (ptr[idx + 3] << 24);
+  return res;
 }
-uint16_t Read16FromMemOrDie(char* ptr, uint32_t idx) {
-  return 
-    ptr[idx]
-    | ptr[idx + 1] <<8;
+
+uint16_t Read16FromMemOrDie(unsigned char *ptr, uint32_t idx) {
+  return (
+      (ptr[idx]) |
+      (ptr[idx + 1] << 8));
 }
 
 uint32_t Read32OrDie(FILE *file) {
@@ -485,21 +487,13 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_LOAD:
         v = instructions[ip + 1];
-        x = Read32FromMemOrDie(instructions, ip+2);
+        x = Read32FromMemOrDie(instructions, (ip + 2));
         t = instructions[ip + 6];
         j = instructions[ip + 7];
         printf(
             "Unimplemented opcode: OP_LOAD (v, x, t, j) = (%i, %i, %i, %i)\n",
             v, x, t, j);
-        /**
-          printf("aux_vec: "); PrintVector(aux_vec, 0, "\n");
-          printf("env_lex: "); PrintVector(env_lex, 1, "\n");
-        /**/
         ip += 8;
-        /**
-        if (v == CLOSE_FLAT) {
-          PrintVector(aux_vec, 0, "\n");
-        }
         /**/
         /* TODO: do we do anything special to load closures ? */
         GetVector(
@@ -510,26 +504,29 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_MOVE:
         s = instructions[ip + 1];
-        i = Read16FromMemOrDie(instructions, ip+2);
+        i = Read16FromMemOrDie(instructions, (ip + 2));
         t = instructions[ip + 4];
-        j = Read16FromMemOrDie(instructions, ip+5);
+        j = Read16FromMemOrDie(instructions, (ip + 5));
         printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
-          if (env_tmp && env_tmp->values) {printf("env_tmp: "); printf("%u\n", env_tmp->values[0]); /*PrintVector(env_tmp, 0, "\n");*/}
         ip += 6;
         DSValue *from = GetVector(
             s,
             env_lib, env_glo, aux_res,
             env_tmp, aux_vec, env_lex
             )->values[i];
+        printf("%i\n", from);
+        PrintValue(vmldsb, from, "\n");
+        PrintVector(env_lex, 1, "\n");
         GetVector(
             t,
             env_lib, env_glo, aux_res,
             env_tmp, aux_vec, env_lex
-            )->values[j] = CreateValue(from->type, from->value);
+            )->values[j] = CopyValue(from);
         /* TODO: should moved-from vector entry be zero/void/nil after move ? */
+        PrintVector(env_tmp, 0, "\n");
         break;
       case OP_NEW_VEC:
-        n = Read16FromMemOrDie(instructions, ip+1);
+        n = Read16FromMemOrDie(instructions, (ip + 1));
         printf("OP_NEW_VEC (n) = (%i)\n", n);
         ip += 2;
         aux_vec = CreateVector(n);
@@ -539,7 +536,7 @@ void Run(VMLDSB *vmldsb) {
         env_lex = ExtendVector(env_lex, aux_vec);
         break;
       case OP_JUMP:
-        l = Read32FromMemOrDie(instructions, ip+1);
+        l = Read32FromMemOrDie(instructions, (ip + 1));
         printf("OP_JUMP (l) = (%i)\n", l);
         ip += 4;
         /* Compensate for increment before looping */
@@ -547,8 +544,8 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_JUMP_IF_FALSE:
         q = instructions[ip + 1];
-        i = Read16FromMemOrDie(instructions, ip+2);
-        l = Read32FromMemOrDie(instructions, ip+4);
+        i = Read16FromMemOrDie(instructions, (ip + 2));
+        l = Read32FromMemOrDie(instructions, (ip + 4));
         printf("OP_JUMP_IF_FALSE (q, i, l) = (%i, %i, %i)\n", q, i, l);
         ip += 7;
         DSValue *value = GetVector(
@@ -562,6 +559,7 @@ void Run(VMLDSB *vmldsb) {
         }
         break;
       case OP_TAIL_CALL:
+        PrintVector(env_tmp, 0, "\n");
     /**
     PrintCore(
         ip,
@@ -569,7 +567,7 @@ void Run(VMLDSB *vmldsb) {
         env_tmp, aux_vec, env_lex);
     /**/
         q = instructions[ip + 1];
-        i = Read16FromMemOrDie(instructions, ip+2);
+        i = Read16FromMemOrDie(instructions, (ip + 2));
         printf("Unimplemented opcode: OP_TAIL_CALL (q, i) = (%i, %i)\n", q, i);
           printf("aux_vec: "); PrintVector(aux_vec, 0, "\n");
           printf("env_lex: "); PrintVector(env_lex, 1, "\n");
@@ -607,6 +605,7 @@ void Run(VMLDSB *vmldsb) {
         }
         break;
       case OP_CALL:
+        PrintVector(env_tmp, 0, "\n");
     /**
     PrintCore(
         ip,
@@ -614,8 +613,8 @@ void Run(VMLDSB *vmldsb) {
         env_tmp, aux_vec, env_lex);
     /**/
         q = instructions[ip + 1];
-        i = Read16FromMemOrDie(instructions, ip+2);
-        n = Read16FromMemOrDie(instructions, ip+4);
+        i = Read16FromMemOrDie(instructions, (ip + 2));
+        n = Read16FromMemOrDie(instructions, (ip + 4));
         printf(
             "Unimplemented opcode: OP_CALL (q, i, n) = (%i, %i, %i)\n",
             q, i, n);
@@ -626,7 +625,7 @@ void Run(VMLDSB *vmldsb) {
         new_vec->values[1] = env_lex;
         new_vec->values[2] = ip;
         for (; n > 0; n--) {
-          new_vec->values[(2 + n)] = CopyValue(&env_tmp[(n - 1)]);
+          new_vec->values[(2 + n)] = CopyValue(env_tmp->values[(n - 1)]);
         }
         cont = new_vec;
         /* TODO: look at possibility of fall-through, since call leads to 
@@ -650,6 +649,7 @@ void Run(VMLDSB *vmldsb) {
           PrintValue(vmldsb, aux_res->values[0], "\n");
           return;
         }
+        PrintVector(env_tmp, 0, "\n");
         break;
       default:
         printf("Unknown opcode: %u\n", op);
