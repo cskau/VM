@@ -268,8 +268,6 @@ void PrintCore(
 }
 
 DSValue *Lib(uint16_t i, DSVector *aux_vec) {
-  /* TODO: arity checking? */
-  /* TODO: check we're doing the parameters in right order */
   switch (i) {
     case LIB_INTEGERQ:
       CheckArityOrDie(1, aux_vec->length);
@@ -295,12 +293,72 @@ DSValue *Lib(uint16_t i, DSVector *aux_vec) {
           INT,
           (aux_vec->values[0]->value * aux_vec->values[1]->value));
       break;
+    case LIB_QUOTIENT:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          INT,
+          (aux_vec->values[0]->value / aux_vec->values[1]->value));
+      break;
+    case LIB_REMAINDER:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          INT,
+          (aux_vec->values[0]->value % aux_vec->values[1]->value));
+      break;
+    case LIB_LT:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->value < aux_vec->values[1]->value));
+      break;
+    case LIB_LE:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->value <= aux_vec->values[1]->value));
+      break;
     case LIB_EQ:
       /* TODO: type checking? */
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
           (aux_vec->values[0]->value == aux_vec->values[1]->value));
+      break;
+    case LIB_GE:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->value >= aux_vec->values[1]->value));
+      break;
+    case LIB_GT:
+      CheckArityOrDie(2, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->value > aux_vec->values[1]->value));
+      break;
+    case LIB_BOOLEANQ:
+      CheckArityOrDie(1, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->type == BOOL));
+      break;
+    case LIB_SYMBOLQ:
+      CheckArityOrDie(1, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->type == SYM));
+      break;
+    case LIB_CHARQ:
+      CheckArityOrDie(1, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->type == CHAR));
+      break;
+    case LIB_STRINGQ:
+      CheckArityOrDie(1, aux_vec->length);
+      return CreateValue(
+          BOOL,
+          (aux_vec->values[0]->type == STR));
       break;
     default:
       printf("Unimplemented or unknown library function: %i\n", i);
@@ -353,8 +411,8 @@ DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
   return new_vec;
 }
 
-void CheckArityOrDie(unsigned int want, unsigned int got) {
-  if (want != got) {
+void CheckArityOrDie(int want, int got) {
+  if (want != got && want != -1) {
     printf(
         "Error: Arity mismatch!\n  Want %i, but got %i\n",
         want, got);
