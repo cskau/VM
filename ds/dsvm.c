@@ -47,6 +47,19 @@ typedef struct DSVector_ {
 } DSVector;
 
 /* read binary data, adjust endianess */
+uint32_t Read32FromMemOrDie(char* ptr, uint32_t idx) {
+  return 
+    ptr[idx]
+    | ptr[idx + 1] <<8
+    | ptr[idx + 2] <<16
+    | ptr[idx + 3] <<24;
+}
+uint16_t Read16FromMemOrDie(char* ptr, uint32_t idx) {
+  return 
+    ptr[idx]
+    | ptr[idx + 1] <<8;
+}
+
 uint32_t Read32OrDie(FILE *file) {
   uint32_t res = 0;
   res |= getc(file);
@@ -398,10 +411,7 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_LOAD:
         v = instructions[ip + 1];
-        x = instructions[ip + 2]
-          | instructions[ip + 3] <<8
-          | instructions[ip + 4] <<16
-          | instructions[ip + 5] <<24;
+        x = Read32FromMemOrDie(instructions, ip+2);
         t = instructions[ip + 6];
         j = instructions[ip + 7];
         printf(
@@ -417,9 +427,9 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_MOVE:
         s = instructions[ip + 1];
-        i = instructions[ip + 2];
+        i = Read16FromMemOrDie(instructions, ip+2);
         t = instructions[ip + 4];
-        j = instructions[ip + 5];
+        j = Read16FromMemOrDie(instructions, ip+5);
         printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
         ip += 6;
         DSValue *from = GetVector(
@@ -435,7 +445,7 @@ void Run(VMLDSB *vmldsb) {
         /* TODO: should moved-from vector entry be zero/void/nil after move ? */
         break;
       case OP_NEW_VEC:
-        n = instructions[ip + 1];
+        n = Read16FromMemOrDie(instructions, ip+1);
         printf("OP_NEW_VEC (n) = (%i)\n", n);
         ip += 2;
         aux_vec = CreateVector(n);
@@ -445,7 +455,7 @@ void Run(VMLDSB *vmldsb) {
         env_lex = ExtendVector(env_lex, aux_vec);
         break;
       case OP_JUMP:
-        l = instructions[ip + 1];
+        l = Read32FromMemOrDie(instructions, ip+1);
         printf("OP_JUMP (l) = (%i)\n", l);
         ip += 4;
         /* Compensate for increment before looping */
@@ -453,8 +463,8 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_JUMP_IF_FALSE:
         q = instructions[ip + 1];
-        i = instructions[ip + 2];
-        l = instructions[ip + 4];
+        i = Read16FromMemOrDie(instructions, ip+2);
+        l = Read32FromMemOrDie(instructions, ip+4);
         printf("OP_JUMP_IF_FALSE (q, i, l) = (%i, %i, %i)\n", q, i, l);
         ip += 7;
         DSValue *value = GetVector(
@@ -469,7 +479,7 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_TAIL_CALL:
         q = instructions[ip + 1];
-        i = instructions[ip + 2];
+        i = Read16FromMemOrDie(instructions, ip+2);
         printf("Unimplemented opcode: OP_TAIL_CALL (q, i) = (%i, %i)\n", q, i);
         ip += 3;
         op_tail_call:
@@ -496,8 +506,8 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_CALL:
         q = instructions[ip + 1];
-        i = instructions[ip + 2];
-        n = instructions[ip + 4];
+        i = Read16FromMemOrDie(instructions, ip+2);
+        n = Read16FromMemOrDie(instructions, ip+4);
         printf(
             "Unimplemented opcode: OP_CALL (q, i, n) = (%i, %i, %i)\n",
             q, i, n);
