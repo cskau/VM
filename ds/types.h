@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 
 #define  VML_MAGIC  0xDA15CE03
 #define  VML_EOS    0x80
@@ -11,6 +12,12 @@
 #define  SCP_RES  -3
 #define  SCP_TMP  -4
 #define  SCP_VEC  -5
+
+typedef struct DSValue DSValue;
+typedef struct DSVector DSVector;
+
+DSVector *CopyVector(DSVector *old_vector, unsigned int from);
+DSVector *CreateVector(unsigned int length);
 
 enum ValueTypes {
   NIL = 0,
@@ -26,16 +33,26 @@ enum ValueTypes {
   FUNC_LIB = 9,
 };
 
-typedef struct {
+struct DSValue {
   enum ValueTypes type;
   union {
     int32_t value;
     uint32_t index;
     char code;
   };
-} DSValue;
+  /* for closures.. */
+  DSVector *env_lex;
+};
 
-DSValue *CreateValue(enum ValueTypes type, uint32_t value) {
+struct DSVector {
+  unsigned int length;
+  union {
+    DSValue **values;
+    DSVector **vectors;
+  }
+};
+
+DSValue *CreateValue(enum ValueTypes type, uint32_t value, DSVector *env_lex) {
   DSValue *new_value = malloc(sizeof(DSValue));
   new_value->type = type;
   if (new_value->type == INT) {
@@ -45,15 +62,77 @@ DSValue *CreateValue(enum ValueTypes type, uint32_t value) {
   } else {
     new_value->index = (uint32_t)value;
   }
+  if (new_value->type == CLOSE_FLAT) {
+    new_value->env_lex = CreateVector(1);
+    new_value->env_lex->vectors[0] = CopyVector(env_lex, 0);
+  } else if (new_value->type == CLOSE_DEEP) {
+    new_value->env_lex = CopyVector(env_lex, 1);
+    new_value->env_lex = env_lex;
+  } else {
+    new_value->env_lex = NULL;
+  }
   return new_value;
 };
 
 DSValue *CopyValue(DSValue *old_value) {
+  if (old_value == NULL) {
+    return old_value;
+  }
   DSValue *new_value = malloc(sizeof(DSValue));
   new_value->type = old_value->type;
   new_value->value = old_value->value;
+  /* TODO: deep copy ?? */
+  new_value->env_lex = old_value->env_lex;
   return new_value;
 };
+
+DSVector *CreateVector(unsigned int length) {
+  DSVector *new_vec = malloc(sizeof(DSVector));
+  new_vec->length = length;
+  new_vec->values = calloc(length, sizeof(DSValue*));
+  return new_vec;
+}
+
+DSVector *CopyVector(DSVector *old_vector, unsigned int depth) {
+  unsigned int i = 0;
+  if (old_vector == NULL) {
+    return old_vector;
+  }
+  DSVector *new_vector = malloc(sizeof(DSVector));
+  if (old_vector == NULL) {
+    new_vector->length = 0;
+    new_vector->vectors = NULL;
+  } else {
+    new_vector->length = old_vector->length;
+    if (depth > 0) {
+      new_vector->vectors = malloc(new_vector->length * sizeof(DSVector*));
+      for (i = 0; i < new_vector->length ; i++) {
+        new_vector->vectors[i] = CopyVector(old_vector->vectors[i], (depth - 1));
+      }
+    } else {
+      new_vector->values = malloc(new_vector->length * sizeof(DSValue*));
+      for (i = 0; i < new_vector->length ; i++) {
+        new_vector->values[i] = CopyValue(old_vector->values[i]);
+      }
+    }
+  }
+  return new_vector;
+}
+
+DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
+  DSVector *new_vec = malloc(sizeof(DSVector));
+  new_vec->length = (env_lex != NULL) ? (env_lex->length + 1) : 1;
+  new_vec->vectors = malloc(new_vec->length * sizeof(DSVector*));
+  new_vec->vectors[0] = aux_vec;
+  if (env_lex != NULL) {
+    memcpy(
+        &new_vec->vectors[1],
+        env_lex->vectors,
+        (env_lex->length * sizeof(DSVector*)));
+    /*free(env_lex);*/
+  }
+  return new_vec;
+}
 
 
 /* 5.3 The Instructions */

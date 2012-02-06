@@ -9,7 +9,7 @@
     http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
 */
 
-/**
+/**/
 #define DEBUG
 /**/
 #ifdef DEBUG
@@ -46,14 +46,6 @@ typedef struct {
   uint32_t signature_length;
   unsigned char *compiler_signature;
 } VMLDSB;
-
-typedef struct DSVector_ {
-  unsigned int length;
-  union {
-    DSValue **values;
-    struct DSVector_ **vectors;
-  }
-} DSVector;
 
 /* read binary data, adjust endianess */
 uint32_t Read32FromMemOrDie(unsigned char *ptr, uint32_t idx) {
@@ -237,10 +229,14 @@ void PrintValue(VMLDSB* dsb, DSValue *value, char* seperator) {
         printf("%u", value->index);
         break;
       case CLOSE_FLAT:
-        printf("close-flat (%u)", value->index);
+        printf("close-flat (%u) (", value->index);
+        /*PrintVector(value->env_lex, 1, "");*/
+        printf("...)");
         break;
       case CLOSE_DEEP:
-        printf("close-deep (%u)", value->index);
+        printf("close-deep (%u) (", value->index);
+        /*PrintVector(value->env_lex, 1, "");*/
+        printf("...)");
         break;
       case VOID:
         printf("void");
@@ -273,7 +269,7 @@ void PrintVector(DSVector *vector, int depth, char* seperator) {
     }
     printf("){%u}%s", vector->length, seperator);
   } else {
-    printf("uninitialized vector\n");
+    printf("uninitialized vector%s", seperator);
   }
 }
 
@@ -292,14 +288,14 @@ void PrintCore(
     PrintVector(env_lex->vectors[i], 0, "\n");
   }
   */
-  printf("env_tmp: ");
-  PrintVector(env_tmp, 0, "\n");
   printf("env_glo: ");
   PrintVector(env_glo, 0, "\n");
-  printf("aux_vec: ");
-  PrintVector(aux_vec, 0, "\n");
   printf("aux_res: ");
   PrintVector(aux_res, 0, "\n");
+  printf("env_tmp: ");
+  PrintVector(env_tmp, 0, "\n");
+  printf("aux_vec: ");
+  PrintVector(aux_vec, 0, "\n");
   /*
   printf("env_lib: ");
   PrintVector(env_lib, 0, "\n");
@@ -322,92 +318,107 @@ DSValue *Lib(uint16_t i, DSVector *aux_vec) {
       CheckArityOrDie(1, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->type == INT ? 1 : 0));
+          (aux_vec->values[0]->type == INT ? 1 : 0),
+          NULL);
       break;
     case LIB_PLUS:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value + aux_vec->values[1]->value));
+          (aux_vec->values[0]->value + aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_MINUS:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value - aux_vec->values[1]->value));
+          (aux_vec->values[0]->value - aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_TIMES:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value * aux_vec->values[1]->value));
+          (aux_vec->values[0]->value * aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_QUOTIENT:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value / aux_vec->values[1]->value));
+          (aux_vec->values[0]->value / aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_REMAINDER:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value % aux_vec->values[1]->value));
+          (aux_vec->values[0]->value % aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_LT:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value < aux_vec->values[1]->value));
+          (aux_vec->values[0]->value < aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_LE:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value <= aux_vec->values[1]->value));
+          (aux_vec->values[0]->value <= aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_EQ:
       /* TODO: type checking? */
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value == aux_vec->values[1]->value));
+          (aux_vec->values[0]->value == aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_GE:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value >= aux_vec->values[1]->value));
+          (aux_vec->values[0]->value >= aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_GT:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value > aux_vec->values[1]->value));
+          (aux_vec->values[0]->value > aux_vec->values[1]->value),
+          NULL);
       break;
     case LIB_BOOLEANQ:
       CheckArityOrDie(1, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->type == BOOL));
+          (aux_vec->values[0]->type == BOOL),
+          NULL);
       break;
     case LIB_SYMBOLQ:
       CheckArityOrDie(1, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->type == SYM));
+          (aux_vec->values[0]->type == SYM),
+          NULL);
       break;
     case LIB_CHARQ:
       CheckArityOrDie(1, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->type == CHAR));
+          (aux_vec->values[0]->type == CHAR),
+          NULL);
       break;
     case LIB_STRINGQ:
       CheckArityOrDie(1, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->type == STR));
+          (aux_vec->values[0]->type == STR),
+          NULL);
       break;
     default:
       printf("Unimplemented or unknown library function: %i\n", i);
@@ -435,45 +446,6 @@ DSVector *GetVector(
       return env_lex->vectors[t];
   }
   return NULL;
-}
-
-/* TODO: inline the below ! */
-DSVector *CreateVector(unsigned int length) {
-  DSVector *new_vec = malloc(sizeof(DSVector));
-  new_vec->length = length;
-  new_vec->values = calloc(length, sizeof(DSValue*));
-  return new_vec;
-}
-
-DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
-  DSVector *new_vec = malloc(sizeof(DSVector));
-  new_vec->length = (env_lex != NULL) ? (env_lex->length + 1) : 1;
-  new_vec->vectors = malloc(new_vec->length * sizeof(DSVector*));
-  new_vec->vectors[0] = aux_vec;
-  if (env_lex != NULL) {
-    memcpy(
-        &new_vec->vectors[1],
-        env_lex->vectors,
-        (env_lex->length * sizeof(DSVector*)));
-    /*free(env_lex);*/
-  }
-  return new_vec;
-}
-
-DSVector *CopyVector(DSVector *old_vector, unsigned int from) {
-  DSVector *new_vector = malloc(sizeof(DSVector));
-  if (old_vector == NULL) {
-    new_vector->length = 0;
-    new_vector->vectors = NULL;
-  } else {
-    new_vector->length = (old_vector->length - from);
-    new_vector->vectors = malloc(new_vector->length * sizeof(DSVector*));
-    memcpy(
-        new_vector->vectors,
-        &old_vector->vectors[from],
-        (new_vector->length * sizeof(DSVector*)));
-  }
-  return new_vector;
 }
 
 void CheckArityOrDie(int want, int got) {
@@ -511,7 +483,7 @@ void Run(VMLDSB *vmldsb) {
   env_lib = CreateVector(55);
   for (k = 0; k < 55; k++) {
     /* Use special type to refer to lib func */
-    env_lib->values[k] = CreateValue(FUNC_LIB, k);
+    env_lib->values[k] = CreateValue(FUNC_LIB, k, NULL);
   }
 
   while (1) {
@@ -539,13 +511,17 @@ void Run(VMLDSB *vmldsb) {
               v, x, t, j);
         )
         ip += 8;
-        /**/
-        /* TODO: do we do anything special to load closures ? */
+        DSVector *new_env_lex = NULL;
+        if (v == CLOSE_FLAT) {
+          new_env_lex = aux_vec;
+        } else if (v == CLOSE_DEEP) {
+          new_env_lex = env_lex;
+        }
         GetVector(
             t,
             env_lib, env_glo, aux_res,
             env_tmp, aux_vec, env_lex
-            )->values[j] = CreateValue(v, x);
+            )->values[j] = CreateValue(v, x, new_env_lex);
         break;
       case OP_MOVE:
         s = instructions[ip + 1];
@@ -632,7 +608,15 @@ void Run(VMLDSB *vmldsb) {
             CheckArityOrDie(
                 vmldsb->lambda_pool[close->index].arity,
                 aux_vec->length);
-            env_lex = CopyVector(env_lex, q);
+              /*
+            if (close->type == CLOSE_DEEP) {
+              env_lex = CopyVector(env_lex, (q > 0 ? q : 0));
+            } else {
+              env_lex->length = aux_vec->length;
+              env_lex->values[0] = aux_vec;
+            }
+            */
+            env_lex = close->env_lex;
             env_lex = ExtendVector(env_lex, aux_vec);
             /* Compensate for increase before looping */
             ip = (vmldsb->lambda_pool[close->index].code - 1);
