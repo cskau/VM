@@ -9,6 +9,15 @@
     http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
 */
 
+/**
+#define DEBUG
+/**/
+#ifdef DEBUG
+  #define  DEBUG_EXEC(e)  e
+#else
+  #define  DEBUG_EXEC(e)
+#endif
+
 typedef struct {
   /* Program limits */
   uint16_t max_glo, max_tmp, max_res;
@@ -451,6 +460,22 @@ DSVector *ExtendVector(DSVector *env_lex, DSVector *aux_vec) {
   return new_vec;
 }
 
+DSVector *CopyVector(DSVector *old_vector, unsigned int from) {
+  DSVector *new_vector = malloc(sizeof(DSVector));
+  if (old_vector == NULL) {
+    new_vector->length = 0;
+    new_vector->vectors = NULL;
+  } else {
+    new_vector->length = (old_vector->length - from);
+    new_vector->vectors = malloc(new_vector->length * sizeof(DSVector*));
+    memcpy(
+        new_vector->vectors,
+        &old_vector->vectors[from],
+        (new_vector->length * sizeof(DSVector*)));
+  }
+  return new_vector;
+}
+
 void CheckArityOrDie(int want, int got) {
   if (want != got && want != -1) {
     printf(
@@ -490,15 +515,15 @@ void Run(VMLDSB *vmldsb) {
   }
 
   while (1) {
-    /**/
-    printf("\n");
-    PrintCore(
-        ip,
-        env_lib, env_glo, aux_res,
-        env_tmp, aux_vec, env_lex,
-        cont);
-    printf("\n");
-    /**/
+    DEBUG_EXEC(
+      printf("\n");
+      PrintCore(
+          ip,
+          env_lib, env_glo, aux_res,
+          env_tmp, aux_vec, env_lex,
+          cont);
+      printf("\n");
+    )
     op = instructions[ip];
     switch (op) {
       case OP_NOP:
@@ -508,9 +533,11 @@ void Run(VMLDSB *vmldsb) {
         x = Read32FromMemOrDie(instructions, (ip + 2));
         t = instructions[ip + 6];
         j = instructions[ip + 7];
-        printf(
-            "Unimplemented opcode: OP_LOAD (v, x, t, j) = (%i, %i, %i, %i)\n",
-            v, x, t, j);
+        DEBUG_EXEC(
+          printf(
+              "Unimplemented opcode: OP_LOAD (v, x, t, j) = (%i, %i, %i, %i)\n",
+              v, x, t, j);
+        )
         ip += 8;
         /**/
         /* TODO: do we do anything special to load closures ? */
@@ -525,7 +552,9 @@ void Run(VMLDSB *vmldsb) {
         i = Read16FromMemOrDie(instructions, (ip + 2));
         t = instructions[ip + 4];
         j = Read16FromMemOrDie(instructions, (ip + 5));
-        printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
+        DEBUG_EXEC(
+          printf("OP_MOVE (s, i, t, j) = (%i, %i, %i, %i)\n", s, i, t, j);
+        )
         ip += 6;
         DSValue *from = GetVector(
             s,
@@ -541,17 +570,23 @@ void Run(VMLDSB *vmldsb) {
         break;
       case OP_NEW_VEC:
         n = Read16FromMemOrDie(instructions, (ip + 1));
-        printf("OP_NEW_VEC (n) = (%i)\n", n);
+        DEBUG_EXEC(
+          printf("OP_NEW_VEC (n) = (%i)\n", n);
+        )
         ip += 2;
         aux_vec = CreateVector(n);
         break;
       case OP_EXTEND:
-        printf("OP_EXTEND\n");
+        DEBUG_EXEC(
+          printf("OP_EXTEND\n");
+        )
         env_lex = ExtendVector(env_lex, aux_vec);
         break;
       case OP_JUMP:
         l = Read32FromMemOrDie(instructions, (ip + 1));
-        printf("OP_JUMP (l) = (%i)\n", l);
+        DEBUG_EXEC(
+          printf("OP_JUMP (l) = (%i)\n", l);
+        )
         ip += 4;
         /* Compensate for increment before looping */
         ip = (l - 1);
@@ -560,7 +595,9 @@ void Run(VMLDSB *vmldsb) {
         q = instructions[ip + 1];
         i = Read16FromMemOrDie(instructions, (ip + 2));
         l = Read32FromMemOrDie(instructions, (ip + 4));
-        printf("OP_JUMP_IF_FALSE (q, i, l) = (%i, %i, %i)\n", q, i, l);
+        DEBUG_EXEC(
+          printf("OP_JUMP_IF_FALSE (q, i, l) = (%i, %i, %i)\n", q, i, l);
+        )
         ip += 7;
         DSValue *value = GetVector(
             q,
@@ -575,7 +612,9 @@ void Run(VMLDSB *vmldsb) {
       case OP_TAIL_CALL:
         q = instructions[ip + 1];
         i = Read16FromMemOrDie(instructions, (ip + 2));
-        printf("Unimplemented opcode: OP_TAIL_CALL (q, i) = (%i, %i)\n", q, i);
+        DEBUG_EXEC(
+          printf("OP_TAIL_CALL (q, i) = (%i, %i)\n", q, i);
+        )
         ip += 3;
         op_tail_call:
         if (q == SCP_LIB) {
@@ -590,10 +629,10 @@ void Run(VMLDSB *vmldsb) {
               env_tmp, aux_vec, env_lex
               )->values[i];
           if (close->type == CLOSE_FLAT || close->type == CLOSE_DEEP) {
-            printf("%s\n", (close->type == CLOSE_FLAT ? "flat" : "deep"));
             CheckArityOrDie(
                 vmldsb->lambda_pool[close->index].arity,
                 aux_vec->length);
+            env_lex = CopyVector(env_lex, q);
             env_lex = ExtendVector(env_lex, aux_vec);
             /* Compensate for increase before looping */
             ip = (vmldsb->lambda_pool[close->index].code - 1);
@@ -612,9 +651,9 @@ void Run(VMLDSB *vmldsb) {
         q = instructions[ip + 1];
         i = Read16FromMemOrDie(instructions, (ip + 2));
         n = Read16FromMemOrDie(instructions, (ip + 4));
-        printf(
-            "Unimplemented opcode: OP_CALL (q, i, n) = (%i, %i, %i)\n",
-            q, i, n);
+        DEBUG_EXEC(
+          printf("OP_CALL (q, i, n) = (%i, %i, %i)\n", q, i, n);
+        )
         ip += 5;
         /* push to continuation stack */
         DSVector *new_vec = CreateVector((n + 3));
@@ -630,7 +669,9 @@ void Run(VMLDSB *vmldsb) {
         goto op_tail_call;
         break;
       case OP_RETURN:
-        printf("Unimplemented opcode: OP_RETURN\n");
+        DEBUG_EXEC(
+          printf("OP_RETURN\n");
+        )
         /* see OP_TAIL_CALL above */
         op_return:
         if (cont != NULL) {
