@@ -1015,7 +1015,7 @@ static StkId lua_execute (Byte *pc, StkId base)
 
    push0: push1: push2:
      tag(top) = LUA_T_NUMBER;
-     nvalue(top) = ((OpCode)*pc)-PUSH0;
+     nvalue(top) = ((OpCode)*(pc-1))-PUSH0;
      incr_top;
      goto *table[*pc++];
 
@@ -1064,7 +1064,7 @@ static StkId lua_execute (Byte *pc, StkId base)
    pushlocal3: pushlocal4: pushlocal5:
    pushlocal6: pushlocal7: pushlocal8:
    pushlocal9: 
-     *top = *((stack+base) + (int)(((OpCode)*pc)-PUSHLOCAL0)); incr_top; goto *table[*pc++];
+     *top = *((stack+base) + (int)(((OpCode)*(pc-1))-PUSHLOCAL0)); incr_top; goto *table[*pc++];
 
    pushlocal: *top = *((stack+base) + (*pc++)); incr_top; goto *table[*pc++];
 
@@ -1097,7 +1097,7 @@ static StkId lua_execute (Byte *pc, StkId base)
    storelocal3: storelocal4: storelocal5:
    storelocal6: storelocal7: storelocal8:
    storelocal9:
-     *((stack+base) + (int)(((OpCode)*pc)-STORELOCAL0)) = *(--top);
+     *((stack+base) + (int)(((OpCode)*(pc-1))-STORELOCAL0)) = *(--top);
      goto *table[*pc++];
 
    storelocal: *((stack+base) + (*pc++)) = *(--top); goto *table[*pc++];
@@ -1140,7 +1140,7 @@ static StkId lua_execute (Byte *pc, StkId base)
    {
     int m, n;
     Object *arr;
-    if (((OpCode)*pc) == STORELIST0) m = 0;
+    if (((OpCode)*(pc-1)) == STORELIST0) m = 0;
     else m = *(pc++) * FIELDS_PER_FLUSH;
     n = *(pc++);
     arr = top-n-1;
@@ -1372,7 +1372,7 @@ static StkId lua_execute (Byte *pc, StkId base)
    retcode:
      if (lua_callhook)
        callHook (base, LUA_T_MARK, 1);
-     return (base + ((((OpCode)*pc)==RETCODE0) ? 0 : *pc));
+     return (base + ((((OpCode)*(pc-1))==RETCODE0) ? 0 : *pc));
 
    setline:
    {
