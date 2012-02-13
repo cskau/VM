@@ -942,45 +942,45 @@ static StkId lua_execute (Byte *pc, StkId base)
   OpCode opcode;
   switch (opcode = (OpCode)*pc++)
   {
-   case PUSHNIL: tag(top) = LUA_T_NIL; incr_top; break;
+   PUSHNIL: tag(top) = LUA_T_NIL; incr_top; goto *table[*pc++];
 
-   case PUSH0: case PUSH1: case PUSH2:
+   PUSH0: PUSH1: PUSH2:
      tag(top) = LUA_T_NUMBER;
      nvalue(top) = opcode-PUSH0;
      incr_top;
-     break;
+     goto *table[*pc++];
 
-   case PUSHBYTE: 
-     tag(top) = LUA_T_NUMBER; nvalue(top) = *pc++; incr_top; break;
+   PUSHBYTE: 
+     tag(top) = LUA_T_NUMBER; nvalue(top) = *pc++; incr_top; goto *table[*pc++];
 
-   case PUSHWORD:
+   PUSHWORD:
    {
     Word w;
     get_word(w,pc);
     tag(top) = LUA_T_NUMBER; nvalue(top) = w;
     incr_top;
    }
-   break;
+   goto *table[*pc++];
 
-   case PUSHFLOAT:
+   PUSHFLOAT:
    {
     real num;
     get_float(num,pc);
     tag(top) = LUA_T_NUMBER; nvalue(top) = num;
     incr_top;
    }
-   break;
+   goto *table[*pc++];
 
-   case PUSHSTRING:
+   PUSHSTRING:
    {
     Word w;
     get_word(w,pc);
     tag(top) = LUA_T_STRING; tsvalue(top) = lua_constant[w];
     incr_top;
    }
-   break;
+   goto *table[*pc++];
 
-   case PUSHFUNCTION:
+   PUSHFUNCTION:
    {
     TFunc *f;
     get_code(f,pc);
@@ -989,29 +989,29 @@ static StkId lua_execute (Byte *pc, StkId base)
     top->value.tf = f;
     incr_top;
    }
-   break;
+   goto *table[*pc++];
 
-   case PUSHLOCAL0: case PUSHLOCAL1: case PUSHLOCAL2:
-   case PUSHLOCAL3: case PUSHLOCAL4: case PUSHLOCAL5:
-   case PUSHLOCAL6: case PUSHLOCAL7: case PUSHLOCAL8:
-   case PUSHLOCAL9: 
-     *top = *((stack+base) + (int)(opcode-PUSHLOCAL0)); incr_top; break;
+   PUSHLOCAL0: PUSHLOCAL1: PUSHLOCAL2:
+   PUSHLOCAL3: PUSHLOCAL4: PUSHLOCAL5:
+   PUSHLOCAL6: PUSHLOCAL7: PUSHLOCAL8:
+   PUSHLOCAL9: 
+     *top = *((stack+base) + (int)(opcode-PUSHLOCAL0)); incr_top; goto *table[*pc++];
 
-   case PUSHLOCAL: *top = *((stack+base) + (*pc++)); incr_top; break;
+   PUSHLOCAL: *top = *((stack+base) + (*pc++)); incr_top; goto *table[*pc++];
 
-   case PUSHGLOBAL:
+   PUSHGLOBAL:
    {
     Word w;
     get_word(w,pc);
     getglobal(w);
    }
-   break;
+   goto *table[*pc++];
 
-   case PUSHINDEXED:
+   PUSHINDEXED:
     pushsubscript();
-    break;
+    goto *table[*pc++];
 
-   case PUSHSELF:
+   PUSHSELF:
    {
      Object receiver = *(top-1);
      Word w;
@@ -1021,31 +1021,31 @@ static StkId lua_execute (Byte *pc, StkId base)
      pushsubscript();
      *top = receiver;
      incr_top;
-     break;
+     goto *table[*pc++];
    }
 
-   case STORELOCAL0: case STORELOCAL1: case STORELOCAL2:
-   case STORELOCAL3: case STORELOCAL4: case STORELOCAL5:
-   case STORELOCAL6: case STORELOCAL7: case STORELOCAL8:
-   case STORELOCAL9:
+   STORELOCAL0: STORELOCAL1: STORELOCAL2:
+   STORELOCAL3: STORELOCAL4: STORELOCAL5:
+   STORELOCAL6: STORELOCAL7: STORELOCAL8:
+   STORELOCAL9:
      *((stack+base) + (int)(opcode-STORELOCAL0)) = *(--top);
-     break;
+     goto *table[*pc++];
 
-   case STORELOCAL: *((stack+base) + (*pc++)) = *(--top); break;
+   STORELOCAL: *((stack+base) + (*pc++)) = *(--top); goto *table[*pc++];
 
-   case STOREGLOBAL:
+   STOREGLOBAL:
    {
     Word w;
     get_word(w,pc);
     s_object(w) = *(--top);
    }
-   break;
+   goto *table[*pc++];
 
-   case STOREINDEXED0:
+   STOREINDEXED0:
     storesubscript();
-    break;
+    goto *table[*pc++];
 
-   case STOREINDEXED:
+   STOREINDEXED:
    {
     int n = *pc++;
     if (tag(top-3-n) != LUA_T_ARRAY)
@@ -1064,10 +1064,10 @@ static StkId lua_execute (Byte *pc, StkId base)
      top--;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case STORELIST0:
-   case STORELIST:
+   STORELIST0:
+   STORELIST:
    {
     int m, n;
     Object *arr;
@@ -1083,9 +1083,9 @@ static StkId lua_execute (Byte *pc, StkId base)
      n--;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case STORERECORD:
+   STORERECORD:
    {
     int n = *(pc++);
     Object *arr = top-n-1;
@@ -1099,21 +1099,21 @@ static StkId lua_execute (Byte *pc, StkId base)
      n--;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case ADJUST0:
+   ADJUST0:
      adjust_top(base);
-     break;
+     goto *table[*pc++];
 
-   case ADJUST:
+   ADJUST:
      adjust_top(base + *(pc++));
-     break;
+     goto *table[*pc++];
 
-   case VARARGS:
+   VARARGS:
      adjust_varargs(base + *(pc++));
-     break;
+     goto *table[*pc++];
 
-   case CREATEARRAY:
+   CREATEARRAY:
    {
     Word size;
     get_word(size,pc);
@@ -1121,34 +1121,34 @@ static StkId lua_execute (Byte *pc, StkId base)
     tag(top) = LUA_T_ARRAY;
     incr_top;
    }
-   break;
+   goto *table[*pc++];
 
-   case EQOP:
+   EQOP:
    {
     int res = lua_equalObj(top-2, top-1);
     --top;
     tag(top-1) = res ? LUA_T_NUMBER : LUA_T_NIL;
     nvalue(top-1) = 1;
    }
-   break;
+   goto *table[*pc++];
 
-    case LTOP:
+    LTOP:
       comparison(LUA_T_NUMBER, LUA_T_NIL, LUA_T_NIL, "lt");
-      break;
+      goto *table[*pc++];
 
-   case LEOP:
+   LEOP:
       comparison(LUA_T_NUMBER, LUA_T_NUMBER, LUA_T_NIL, "le");
-      break;
+      goto *table[*pc++];
 
-   case GTOP:
+   GTOP:
       comparison(LUA_T_NIL, LUA_T_NIL, LUA_T_NUMBER, "gt");
-      break;
+      goto *table[*pc++];
 
-   case GEOP:
+   GEOP:
       comparison(LUA_T_NIL, LUA_T_NUMBER, LUA_T_NUMBER, "ge");
-      break;
+      goto *table[*pc++];
 
-   case ADDOP:
+   ADDOP:
    {
     Object *l = top-2;
     Object *r = top-1;
@@ -1160,9 +1160,9 @@ static StkId lua_execute (Byte *pc, StkId base)
       --top;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case SUBOP:
+   SUBOP:
    {
     Object *l = top-2;
     Object *r = top-1;
@@ -1174,9 +1174,9 @@ static StkId lua_execute (Byte *pc, StkId base)
       --top;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case MULTOP:
+   MULTOP:
    {
     Object *l = top-2;
     Object *r = top-1;
@@ -1188,9 +1188,9 @@ static StkId lua_execute (Byte *pc, StkId base)
       --top;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case DIVOP:
+   DIVOP:
    {
     Object *l = top-2;
     Object *r = top-1;
@@ -1202,13 +1202,13 @@ static StkId lua_execute (Byte *pc, StkId base)
       --top;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case POWOP:
+   POWOP:
     call_arith("pow");
-    break;
+    goto *table[*pc++];
 
-   case CONCOP:
+   CONCOP:
    {
     Object *l = top-2;
     Object *r = top-1;
@@ -1220,9 +1220,9 @@ static StkId lua_execute (Byte *pc, StkId base)
       --top;
     }
    }
-   break;
+   goto *table[*pc++];
 
-   case MINUSOP:
+   MINUSOP:
     if (tonumber(top-1))
     {
       tag(top) = LUA_T_NIL;
@@ -1231,81 +1231,81 @@ static StkId lua_execute (Byte *pc, StkId base)
     }
     else
       nvalue(top-1) = - nvalue(top-1);
-   break;
+   goto *table[*pc++];
 
-   case NOTOP:
+   NOTOP:
     tag(top-1) = (tag(top-1) == LUA_T_NIL) ? LUA_T_NUMBER : LUA_T_NIL;
     nvalue(top-1) = 1;
-   break;
+   goto *table[*pc++];
 
-   case ONTJMP:
+   ONTJMP:
    {
     Word w;
     get_word(w,pc);
     if (tag(top-1) != LUA_T_NIL) pc += w;
    }
-   break;
+   goto *table[*pc++];
 
-   case ONFJMP:	
+   ONFJMP:	
    {
     Word w;
     get_word(w,pc);
     if (tag(top-1) == LUA_T_NIL) pc += w;
    }
-   break;
+   goto *table[*pc++];
 
-   case JMP:
+   JMP:
    {
     Word w;
     get_word(w,pc);
     pc += w;
    }
-   break;
+   goto *table[*pc++];
 
-   case UPJMP:
+   UPJMP:
    {
     Word w;
     get_word(w,pc);
     pc -= w;
    }
-   break;
+   goto *table[*pc++];
 
-   case IFFJMP:
+   IFFJMP:
    {
     Word w;
     get_word(w,pc);
     top--;
     if (tag(top) == LUA_T_NIL) pc += w;
    }
-   break;
+   goto *table[*pc++];
 
-   case IFFUPJMP:
+   IFFUPJMP:
    {
     Word w;
     get_word(w,pc);
     top--;
     if (tag(top) == LUA_T_NIL) pc -= w;
    }
-   break;
+   goto *table[*pc++];
 
-   case POP: --top; break;
+   POP: --top; goto *table[*pc++];
 
-   case CALLFUNC:
+   CALLFUNC:
    {
      int nParams = *(pc++);
      int nResults = *(pc++);
      StkId newBase = (top-stack)-nParams;
      do_call(newBase, nResults);
    }
-   break;
+   goto *table[*pc++];
 
-   case RETCODE0:
-   case RETCODE:
+   RETCODE0:
+   RETCODE:
      if (lua_callhook)
        callHook (base, LUA_T_MARK, 1);
      return (base + ((opcode==RETCODE0) ? 0 : *pc));
 
-   case SETLINE:
+   SETLINE:
    {
     Word line;
     get_word(line,pc);
@@ -1319,7 +1319,7 @@ static StkId lua_execute (Byte *pc, StkId base)
     (stack+base-1)->value.i = line;
     if (lua_linehook)
       lineHook (line);
-    break;
+    goto *table[*pc++];
    }
 
    default:
