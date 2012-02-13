@@ -9,7 +9,7 @@
     http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
 */
 
-/**/
+/**
 #define DEBUG
 /**/
 #ifdef DEBUG
