@@ -5,43 +5,49 @@ LUA_BIN_IT=/home/user/Dropbox/Studier/1112q34/VM/src/lua/bin/lua
 LUA_TESTS=/home/user/Dropbox/Studier/1112q34/VM/src/lua/test
 JMI_TESTS=/home/user/Dropbox/Studier/1112q34/VM/lua
 
-function lua_tests {
+BTIME=/usr/bin/time -f "%U %S %E %P"
+
+function repeat_tests {
+  echo
+  echo "$4 $3 "
   for i in `seq $2`; do
-    cd $LUA_TESTS
-    $1 array.lua
-    $1 bisect.lua
-    $1 cf.lua
-    $1 dump.lua
-    $1 hello.lua
-    $1 loop.lua
-    $1 save.lua
-    $1 sort.lua
-    $1 split.lua
-    $1 type.lua
+    $1 $3 $4 > /dev/null
   done
 }
 
+function lua_tests {
+  cd $LUA_TESTS
+  time repeat_tests $1 $2 array.lua
+  time repeat_tests $1 $2 bisect.lua
+  time repeat_tests $1 $2 cf.lua
+  time repeat_tests $1 $2 dump.lua
+  time repeat_tests $1 $2 hello.lua
+  time repeat_tests $1 $2 loop.lua
+  time repeat_tests $1 $2 save.lua
+  time repeat_tests $1 $2 sort.lua
+  time repeat_tests $1 $2 split.lua
+  time repeat_tests $1 $2 type.lua
+}
+
 function jmi_tests {
-  for i in `seq $2`; do
-    cd $JMI_TESTS
-    $1 "arg={6}" ackermann.lua \
-    "arg={500000}" ary.lua \
-    "arg={500000}" ary2.lua \
-    "arg={3000}" ary3.lua \
-    "arg={200000}" deep_return.lua \
-    "arg={31}" fibo.lua \
-    "arg={26000}" hash.lua \
-    "arg={55}" hash2.lua \
-    "arg={50000}" heapsort.lua \
-    "arg={9000}" lists.lua \
-    "arg={100}" matrix.lua \
-    "arg={10000}" n_body.lua \
-    "arg={12}" nestedloop.lua \
-    "arg={1000000}" random.lua \
-    "arg={500000}" sieve.lua \
-    "arg={500}" strcat.lua \
-    "arg={600}" strcat2.lua
-  done
+  cd $JMI_TESTS
+  time repeat_tests $1 $2 "arg={6}" ackermann.lua
+  time repeat_tests $1 $2 "arg={500000}" ary.lua
+  time repeat_tests $1 $2 "arg={500000}" ary2.lua
+  time repeat_tests $1 $2 "arg={3000}" ary3.lua
+  time repeat_tests $1 $2 "arg={200000}" deep_return.lua
+  time repeat_tests $1 $2 "arg={31}" fibo.lua
+  time repeat_tests $1 $2 "arg={26000}" hash.lua
+  time repeat_tests $1 $2 "arg={55}" hash2.lua
+  time repeat_tests $1 $2 "arg={50000}" heapsort.lua
+  time repeat_tests $1 $2 "arg={9000}" lists.lua
+  time repeat_tests $1 $2 "arg={100}" matrix.lua
+  time repeat_tests $1 $2 "arg={10000}" n_body.lua
+  time repeat_tests $1 $2 "arg={12}" nestedloop.lua
+  time repeat_tests $1 $2 "arg={1000000}" random.lua
+  time repeat_tests $1 $2 "arg={500000}" sieve.lua
+  time repeat_tests $1 $2 "arg={500}" strcat.lua
+  time repeat_tests $1 $2 "arg={600}" strcat2.lua
 }
 
 echo "Switch-based - Lua tests"
@@ -49,7 +55,7 @@ echo "Switch-based - Lua tests"
 
 echo
 echo "Switch-based - JMI tests"
-time jmi_tests $LUA_BIN_SW 4 30 > /dev/null
+jmi_tests $LUA_BIN_SW 4
 
 echo
 echo "Indirect Threading - Lua tests"
@@ -57,5 +63,5 @@ echo "Indirect Threading - Lua tests"
 
 echo
 echo "Indirect Threading - JMI tests"
-time jmi_tests $LUA_BIN_IT 4 30 > /dev/null
+jmi_tests $LUA_BIN_IT 4
 

@@ -33,36 +33,21 @@
 #define OA_MASK 0x0E000000
 #define OV_MASK 0x01FFFFFF
 
-/*
-#0. Conditional Move.
-#1. Array Index.
-#2. Array Amendment.
-#3. Addition.
-#4. Multiplication.
-#5. Division.
-#6. Not-And.
-#7. Halt.
-#8. Allocation.
-#9. Abandonment.
-#10. Output.
-#11. Input.
-#12. Load Program.
-#13. Orthography.
-*/
-#define OP_IFM 0x00000000
-#define OP_ARI 0x10000000
-#define OP_ARA 0x20000000
-#define OP_ADD 0x30000000
-#define OP_MUL 0x40000000
-#define OP_DIV 0x50000000
-#define OP_NOT 0x60000000
-#define OP_HLT 0x70000000
-#define OP_ALC 0x80000000
-#define OP_ABD 0x90000000
-#define OP_OUT 0xA0000000
-#define OP_INP 0xB0000000
-#define OP_LDP 0xC0000000
-#define OP_ORT 0xD0000000
+/* OP codes */
+#define OP_IFM 0x00000000  // 0. Conditional Move.
+#define OP_ARI 0x10000000  // 1. Array Index.
+#define OP_ARA 0x20000000  // 2. Array Amendment.
+#define OP_ADD 0x30000000  // 3. Addition.
+#define OP_MUL 0x40000000  // 4. Multiplication.
+#define OP_DIV 0x50000000  // 5. Division.
+#define OP_NOT 0x60000000  // 6. Not-And.
+#define OP_HLT 0x70000000  // 7. Halt.
+#define OP_ALC 0x80000000  // 8. Allocation.
+#define OP_ABD 0x90000000  // 9. Abandonment.
+#define OP_OUT 0xA0000000  // 10. Output.
+#define OP_INP 0xB0000000  // 11. Input.
+#define OP_LDP 0xC0000000  // 12. Load Program.
+#define OP_ORT 0xD0000000  // 13. Orthography.
 
 /*
   When reading programs from legacy "unsigned 8-bit character"

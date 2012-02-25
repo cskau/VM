@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# coding: UTF-8
+
+import platform
+
+#print platform.machine()
+#print platform.architecture()
+
+env = Environment()
+env.Append(
+    CFLAGS=['-Wall','-g', '-m32'],
+    CXXFLAGS=['-Wall','-g', '-m32'],
+    CPPFLAGS=['-Wall','-g', '-m32'],
+    LINKFLAGS=['-m32'])
+env.Program('um', ['um.c'])
