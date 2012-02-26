@@ -49,6 +49,16 @@
 #define OP_LDP 0xC0000000  /* 12. Load Program. */
 #define OP_ORT 0xD0000000  /* 13. Orthography. */
 
+// Global machine state.
+typedef void (*NativeCode)();
+NativeCode* native_code = NULL;
+
+uint32_t* byte_code = NULL;
+uint32_t ip = 0;
+uint32_t reg[8] = { 0 };
+uint32_t op, a, b, c;
+uint32_t instr;
+
 /*
   When reading programs from legacy "unsigned 8-bit character"
   scrolls, a series of four bytes A,B,C,D should be interpreted with
@@ -67,9 +77,9 @@ uint32_t * LoadPlatterArrayOrDie(char *fname) {
   }
 
   /* leave entry 0 for storing size */
-  pa = &(((uint32_t*)calloc(CODE_BUF_SIZE, sizeof(uint32_t)))[1]);
+  pa = calloc(CODE_BUF_SIZE, sizeof(uint32_t));
 
-  for (i = 0; (ch = getc(file)) != EOF; i++) {
+  for (i = 1; (ch = getc(file)) != EOF; i++) {
     new_platter = (ch << 24);
     if ((ch = getc(file)) != EOF) {
       new_platter |= (ch << 16);
@@ -90,90 +100,104 @@ uint32_t * LoadPlatterArrayOrDie(char *fname) {
   }
 
   /* store array size in first entry */
-  pa[-1] = i;
+  pa[0] = i;
 
   fclose(file);
 
   return pa;
 }
 
-void SpinCycle(uint32_t *pa) {
-  uint32_t regs[] = {0, 0, 0, 0, 0, 0, 0, 0};
-  uint32_t *ip = pa, *pa0 = pa;
-  uint32_t tmp;
+void ifm() {
+  if (reg[c] != 0) {
+    reg[a] = reg[b];
+  }
+  ip++;
+}
 
-  uint32_t byte_code, op;
-  uint32_t a, b, c;
+NativeCode compile() {
+  switch (op) {
+    case OP_IFM:
+      return (native_code[(ip + 1)] = ifm);
+    default:
+      return NULL;
+  }
+}
+
+void SpinCycle(uint32_t *pa) {
+  uint32_t tmp;
   uint8_t ch;
 
+  byte_code = pa;
+  native_code = calloc(byte_code[0], sizeof(uint32_t));
+
   while (1) {
-    byte_code = *ip;
-    op = (byte_code & OP_MASK);
-    a = (byte_code & RA_MASK) >> 6;
-    b = (byte_code & RB_MASK) >> 3;
-    c = (byte_code & RC_MASK);
+    op = (byte_code[(ip + 1)] & OP_MASK);
+    a = (byte_code[(ip + 1)] & RA_MASK) >> 6;
+    b = (byte_code[(ip + 1)] & RB_MASK) >> 3;
+    c = (byte_code[(ip + 1)] & RC_MASK);
+    NativeCode code = native_code[(ip + 1)];
+    if (code == NULL) { code = compile(); }
+    if (code != NULL) { code(); continue; }
     switch (op) {
       case OP_IFM:
-        if (regs[c] != 0) {
-          regs[a] = regs[b];
-        }
+        ifm(); continue;
         break;
       case OP_ARI:
-        regs[a] = (regs[b] == 0 ? pa0 : (uint32_t*)regs[b])[regs[c]];
+        reg[a] = (reg[b] == 0 ? byte_code : (uint32_t*)reg[b])[(reg[c] + 1)];
         break;
       case OP_ARA:
-        (regs[a] == 0 ? pa0 : (uint32_t*)regs[a])[regs[b]] = regs[c];
+        (reg[a] == 0 ? byte_code : (uint32_t*)reg[a])[(reg[b] + 1)] = reg[c];
         break;
       case OP_ADD:
-        regs[a] = (regs[b] + regs[c]) % 0x100000000;  /* 2^32 */
+        reg[a] = (reg[b] + reg[c]) % 0x100000000;  /* 2^32 */
         break;
       case OP_MUL:
-        regs[a] = (regs[b] * regs[c]) % 0x100000000;  /* 2^32 */
+        reg[a] = (reg[b] * reg[c]) % 0x100000000;  /* 2^32 */
         break;
       case OP_DIV:
-        regs[a] = (regs[b] % 0x100000000) / (regs[c] % 0x100000000);
+        reg[a] = (reg[b] % 0x100000000) / (reg[c] % 0x100000000);
         break;
       case OP_NOT:
-        regs[a] = ~(regs[b] & regs[c]);
+        reg[a] = ~(reg[b] & reg[c]);
         break;
       case OP_HLT:
         return;
         break;
       case OP_ALC:
-        tmp = regs[c];
-        regs[b] = (uint32_t)&((
-            (uint32_t*)calloc((regs[c] + 1), sizeof(uint32_t)))[1]);
-        ((uint32_t*)regs[b])[-1] = tmp;
+        tmp = reg[c];
+        reg[b] = calloc((reg[c] + 1), sizeof(uint32_t));
+        ((uint32_t*)reg[b])[0] = tmp;
         break;
       case OP_ABD:
-        free(&(((uint32_t*)regs[c])[-1]));
+        free(((uint32_t*)reg[c]));
         break;
       case OP_OUT:
-        putchar((uint8_t)regs[c]);
+        putchar((uint8_t)reg[c]);
         break;
       case OP_INP:
-        regs[c] = ((ch = getchar()) != EOF) ? ch : 0xFF;
+        reg[c] = ((ch = getchar()) != EOF) ? ch : 0xFF;
         break;
       case OP_LDP:
         /* NOTE: 0 refers to the special Platter Array 0 */
         /* don't bother copy if we're jumping within the same array */
-        if (regs[b] != 0 && ((uint32_t*)regs[b]) != pa0) {
-          free(&(pa0[-1]));
-          pa0 = malloc(((((uint32_t*)regs[b])[-1] + 1) * sizeof(uint32_t)));
+        if (reg[b] != 0 && ((uint32_t*)reg[b]) != byte_code) {
+          free(byte_code);
+          byte_code = malloc((((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t));
           memcpy(
-              pa0,
-              &(((uint32_t*)(regs[b]))[-1]),
-              ((((uint32_t*)regs[b])[-1] + 1) * sizeof(uint32_t)));
-          pa0 = &(pa0[1]);
+              byte_code,
+              ((uint32_t*)reg[b]),
+              ((((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t)));
+          native_code = calloc(byte_code[0], sizeof(uint32_t));
         }
         /* subtract 1 since we'll increment below */
-        ip = (pa0 + regs[c] - 1);
+        ip = (reg[c] - 1);
         break;
       case OP_ORT:
-        regs[(byte_code & OA_MASK) >> 25] = (byte_code & OV_MASK);
+        reg[(byte_code[(ip + 1)] & OA_MASK) >> 25] =
+            (byte_code[(ip + 1)] & OV_MASK);
         break;
       default:
-        printf("Unknown byte_code: %u\n", byte_code);
+        printf("Unknown byte_code: %u\n", instr);
         return;
     }
     ip++;
@@ -181,7 +205,7 @@ void SpinCycle(uint32_t *pa) {
 
   /* free the original platter array */
   /* TODO(cskau): Is this a good idea? (Double free, not our memory, ..) */
-  free(&(pa[-1]));
+  free(pa);
 }
 
 int main(int argc, char *argv[]) {

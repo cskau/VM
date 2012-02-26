@@ -15,7 +15,7 @@ else:
   env.Append(CCFLAGS=['-O3'])
 
 env.Append(
-    CCFLAGS=['-m32', '-ansi'],
+    CCFLAGS=['-m32'],
     LINKFLAGS=['-m32'])
 
 env.Program('um', ['um.c'])
