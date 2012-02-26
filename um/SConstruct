@@ -1,15 +1,21 @@
 #!/usr/bin/env python
 # coding: UTF-8
 
-import platform
-
-#print platform.machine()
-#print platform.architecture()
+AddOption(
+    '--debug-build',
+    default=False)
 
 env = Environment()
+
+# build in debug mode ?
+if GetOption('debug_build'):
+  env.ParseFlags('-DDEBUG')
+  env.Append(CCFLAGS=['-Wall','-g'])
+else:
+  env.Append(CCFLAGS=['-O3'])
+
 env.Append(
-    CFLAGS=['-Wall','-g', '-m32'],
-    CXXFLAGS=['-Wall','-g', '-m32'],
-    CPPFLAGS=['-Wall','-g', '-m32'],
+    CCFLAGS=['-m32', '-ansi'],
     LINKFLAGS=['-m32'])
+
 env.Program('um', ['um.c'])
