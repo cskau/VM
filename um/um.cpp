@@ -3,6 +3,10 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "v8.h"
+#include "assembler.h"
+#include "ia32/assembler-ia32-inl.h"
+
 /* Google C++ Style Guide : 
     http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
 */
@@ -77,7 +81,7 @@ uint32_t * LoadPlatterArrayOrDie(char *fname) {
   }
 
   /* leave entry 0 for storing size */
-  pa = calloc(CODE_BUF_SIZE, sizeof(uint32_t));
+  pa = (uint32_t*)calloc(CODE_BUF_SIZE, sizeof(uint32_t));
 
   for (i = 1; (ch = getc(file)) != EOF; i++) {
     new_platter = (ch << 24);
@@ -124,11 +128,12 @@ NativeCode compile() {
 }
 
 void SpinCycle(uint32_t *pa) {
+  v8::V8::Initialize();
   uint32_t tmp;
   uint8_t ch;
 
   byte_code = pa;
-  native_code = calloc(byte_code[0], sizeof(uint32_t));
+  native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
 
   while (1) {
     op = (byte_code[(ip + 1)] & OP_MASK);
@@ -165,7 +170,7 @@ void SpinCycle(uint32_t *pa) {
         break;
       case OP_ALC:
         tmp = reg[c];
-        reg[b] = calloc((reg[c] + 1), sizeof(uint32_t));
+        reg[b] = (uint32_t)calloc((reg[c] + 1), sizeof(uint32_t));
         ((uint32_t*)reg[b])[0] = tmp;
         break;
       case OP_ABD:
@@ -182,12 +187,13 @@ void SpinCycle(uint32_t *pa) {
         /* don't bother copy if we're jumping within the same array */
         if (reg[b] != 0 && ((uint32_t*)reg[b]) != byte_code) {
           free(byte_code);
-          byte_code = malloc((((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t));
+          byte_code = (uint32_t*)malloc(
+              (((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t));
           memcpy(
               byte_code,
               ((uint32_t*)reg[b]),
               ((((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t)));
-          native_code = calloc(byte_code[0], sizeof(uint32_t));
+          native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
         }
         /* subtract 1 since we'll increment below */
         ip = (reg[c] - 1);
