@@ -7,6 +7,14 @@
 #include "assembler.h"
 #include "ia32/assembler-ia32-inl.h"
 
+#define __ assembler.
+
+v8::internal::Operand ExternalOperand(void* address) {
+  return v8::internal::Operand(
+      reinterpret_cast<int32_t>(address),
+      v8::internal::RelocInfo::EXTERNAL_REFERENCE);
+}
+
 /* Google C++ Style Guide : 
     http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
 */
@@ -62,6 +70,21 @@ uint32_t ip = 0;
 uint32_t reg[8] = { 0 };
 uint32_t op, a, b, c;
 uint32_t instr;
+
+void set_code(uint32_t target) {
+  if (target != 0) {
+    delete[] byte_code;
+    delete[] native_code;
+    uint32_t* array = ((uint32_t*)target);
+    size_t size = array[0];
+    byte_code = new uint32_t[size];
+    native_code = new NativeCode[size];
+    for (unsigned int i = 0; i < size; ++i) {
+      byte_code[i] = array[i];
+      native_code[i] = NULL;
+    }
+  }
+}
 
 /*
   When reading programs from legacy "unsigned 8-bit character"
@@ -119,12 +142,39 @@ void ifm() {
 }
 
 NativeCode compile() {
+  using namespace v8::internal;
+  /* this is slow, but if we cache we shouldn't get here too often */
+  /* TODO(cskau): maybe simply instanciate and store globally ? */
+  Assembler assembler(Isolate::Current(), NULL, 0);
+  CodeDesc desc;
+  size_t allocated;
   switch (op) {
+    /*
     case OP_IFM:
       return (native_code[(ip + 1)] = ifm);
+    */
+    case OP_ADD:
+      __ mov(eax, ExternalOperand(&reg[b]));
+      if (b == c) {
+        __ add(eax, eax);
+      } else {
+        __ add(eax, ExternalOperand(&reg[c]));
+      }
+      __ mov(ExternalOperand(&reg[a]), eax);
+      break;
     default:
       return NULL;
   }
+  /* always needed ? */
+  __ add(ExternalOperand(&ip), Immediate(1));
+  __ ret(0);
+  // assembler.Print();
+  assembler.GetCode(&desc);
+  ASSERT(desc.reloc_size == 0);
+  byte* instructions = reinterpret_cast<byte*>(
+      OS::Allocate(desc.instr_size, &allocated, true));  // executable = true.
+  memcpy(instructions, desc.buffer, desc.instr_size);
+  return reinterpret_cast<NativeCode>(instructions);
 }
 
 void SpinCycle(uint32_t *pa) {
@@ -145,12 +195,20 @@ void SpinCycle(uint32_t *pa) {
     if (code != NULL) { code(); continue; }
     switch (op) {
       case OP_IFM:
-        ifm(); continue;
+        if (reg[c] != 0) {
+          reg[a] = reg[b];
+        }
         break;
       case OP_ARI:
         reg[a] = (reg[b] == 0 ? byte_code : (uint32_t*)reg[b])[(reg[c] + 1)];
         break;
       case OP_ARA:
+        /* TODO(cskau): invalidate native code cache on write to 0 */
+        /*
+        if (reg[a] == 0) {
+          native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
+        }
+        */
         (reg[a] == 0 ? byte_code : (uint32_t*)reg[a])[(reg[b] + 1)] = reg[c];
         break;
       case OP_ADD:

@@ -3,6 +3,8 @@
 
 AddOption(
     '--debug-build',
+    action='store_true',
+    help='debug build',
     default=False)
 
 env = Environment()
@@ -18,7 +20,7 @@ env.Append(
     CPPPATH=['./v8/src'],
     LIBPATH=['./v8/out/ia32.debug/obj.target/tools/gyp'],
     LIBS=['v8_base', 'v8_snapshot'],
-    CCFLAGS=['-pthread', '-m32'],
+    CCFLAGS=['-m32'],
     LINKFLAGS=['-pthread', '-m32'])
 
 
