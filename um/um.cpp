@@ -148,39 +148,70 @@ NativeCode compile() {
   /* TODO(cskau): maybe simply instanciate and store globally ? */
   Assembler assembler(Isolate::Current(), NULL, 0);
   CodeDesc desc;
-  size_t allocated;
   Label skip;
-  switch (op) {
-    case OP_IFM:
-      __ mov(eax, ExternalOperand(&reg[c]));
-      __ test(eax, eax);
-      __ j(zero, &skip, Label::kNear);
-      if (b != c) {
+  size_t allocated;
+  uint32_t ip_tmp = ip;
+  while (ip_tmp < byte_code[0]) {
+    op = (byte_code[(ip_tmp + 1)] & OP_MASK);
+    a = (byte_code[(ip_tmp + 1)] & RA_MASK) >> 6;
+    b = (byte_code[(ip_tmp + 1)] & RB_MASK) >> 3;
+    c = (byte_code[(ip_tmp + 1)] & RC_MASK);
+    switch (op) {
+      case OP_IFM:
+        /* since we're looping we need to clear label every round */
+        skip = Label();
+        __ mov(eax, ExternalOperand(&reg[c]));
+        __ test(eax, eax);
+        //__ cmov(zero, ExternalOperand(&reg[a]), ExternalOperand(&reg[b])); // TODO(cskau): useful ?
+        /**/
+        __ j(zero, &skip, Label::kNear);
+        if (b != c) {
+          __ mov(eax, ExternalOperand(&reg[b]));
+        }
+        __ mov(ExternalOperand(&reg[a]), eax);
+        __ bind(&skip);
+        /**/
+        break;
+      case OP_ADD:
         __ mov(eax, ExternalOperand(&reg[b]));
-      }
-      __ mov(ExternalOperand(&reg[a]), eax);
-      __ bind(&skip);
-      break;
-    case OP_ADD:
-      __ mov(eax, ExternalOperand(&reg[b]));
-      if (b == c) {
-        __ add(eax, eax);
-      } else {
-        __ add(eax, ExternalOperand(&reg[c]));
-      }
-      __ mov(ExternalOperand(&reg[a]), eax);
-      break;
-    case OP_MUL:
-      __ mov(eax, ExternalOperand(&reg[b]));
-      __ mov(edx, ExternalOperand(&reg[c]));
-      __ mul(edx);
-      __ mov(ExternalOperand(&reg[a]), eax); 
-      break;
-    default:
-      return NULL;
+        if (b == c) {
+          __ add(eax, eax);
+        } else {
+          __ add(eax, ExternalOperand(&reg[c]));
+        }
+        __ mov(ExternalOperand(&reg[a]), eax);
+        break;
+      case OP_MUL:
+        __ mov(eax, ExternalOperand(&reg[b]));
+        __ mov(edx, ExternalOperand(&reg[c]));
+        __ mul(edx);
+        __ mov(ExternalOperand(&reg[a]), eax); 
+        break;  
+      case OP_NOT:
+        __ mov(eax, ExternalOperand(&reg[b]));
+        if (b != c) {
+          __ and_(eax, ExternalOperand(&reg[c]));
+        }
+        __ not_(eax);
+        __ mov(ExternalOperand(&reg[a]), eax);
+        break;
+      case OP_ORT:
+        __ mov(
+            ExternalOperand(&reg[(byte_code[(ip_tmp + 1)] & OA_MASK) >> 25]),
+            Immediate((byte_code[(ip_tmp + 1)] & OV_MASK)));
+        break;
+      default:
+        if (assembler.pc_offset() == 0) {
+          /* if we can't compile even the first instruction .. */
+          return NULL;
+        }
+        goto finish; /* Yippee-ki-yay ! */
+        break;
+    }
+    __ add(ExternalOperand(&ip), Immediate(1)); /* increment ip */
+    ip_tmp++;
   }
-  /*   always needed ? */
-  __ add(ExternalOperand(&ip), Immediate(1));
+  finish:
   __ ret(0);
   // assembler.Print();
   assembler.GetCode(&desc);
