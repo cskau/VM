@@ -142,17 +142,25 @@ void ifm() {
 }
 
 NativeCode compile() {
+  /* TODO(cskau): compile whole blocks to first jump */
   using namespace v8::internal;
   /* this is slow, but if we cache we shouldn't get here too often */
   /* TODO(cskau): maybe simply instanciate and store globally ? */
   Assembler assembler(Isolate::Current(), NULL, 0);
   CodeDesc desc;
   size_t allocated;
+  Label skip;
   switch (op) {
-    /*
     case OP_IFM:
-      return (native_code[(ip + 1)] = ifm);
-    */
+      __ mov(eax, ExternalOperand(&reg[c]));
+      __ test(eax, eax);
+      __ j(zero, &skip, Label::kNear);
+      if (b != c) {
+        __ mov(eax, ExternalOperand(&reg[b]));
+      }
+      __ mov(ExternalOperand(&reg[a]), eax);
+      __ bind(&skip);
+      break;
     case OP_ADD:
       __ mov(eax, ExternalOperand(&reg[b]));
       if (b == c) {
@@ -173,6 +181,10 @@ NativeCode compile() {
   ASSERT(desc.reloc_size == 0);
   byte* instructions = reinterpret_cast<byte*>(
       OS::Allocate(desc.instr_size, &allocated, true));  // executable = true.
+  /* Allocation might (and consistently do) fail */
+  if (instructions == NULL) {
+    return NULL;
+  }
   memcpy(instructions, desc.buffer, desc.instr_size);
   return reinterpret_cast<NativeCode>(instructions);
 }
@@ -183,7 +195,7 @@ void SpinCycle(uint32_t *pa) {
   uint8_t ch;
 
   byte_code = pa;
-  native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
+  native_code = (NativeCode*)calloc((byte_code[0] + 1), sizeof(uint32_t));
 
   while (1) {
     op = (byte_code[(ip + 1)] & OP_MASK);
@@ -191,7 +203,7 @@ void SpinCycle(uint32_t *pa) {
     b = (byte_code[(ip + 1)] & RB_MASK) >> 3;
     c = (byte_code[(ip + 1)] & RC_MASK);
     NativeCode code = native_code[(ip + 1)];
-    if (code == NULL) { code = compile(); }
+    if (code == NULL) { code = (native_code[(ip + 1)] = compile()); }
     if (code != NULL) { code(); continue; }
     switch (op) {
       case OP_IFM:
@@ -206,19 +218,20 @@ void SpinCycle(uint32_t *pa) {
         /* TODO(cskau): invalidate native code cache on write to 0 */
         /*
         if (reg[a] == 0) {
+          free(native_code);
           native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
         }
         */
         (reg[a] == 0 ? byte_code : (uint32_t*)reg[a])[(reg[b] + 1)] = reg[c];
         break;
       case OP_ADD:
-        reg[a] = (reg[b] + reg[c]) % 0x100000000;  /* 2^32 */
+        reg[a] = (reg[b] + reg[c]) & 0xFFFFFFFF;  /* 2^32 */
         break;
       case OP_MUL:
-        reg[a] = (reg[b] * reg[c]) % 0x100000000;  /* 2^32 */
+        reg[a] = (reg[b] * reg[c]) & 0xFFFFFFFF;  /* 2^32 */
         break;
       case OP_DIV:
-        reg[a] = (reg[b] % 0x100000000) / (reg[c] % 0x100000000);
+        reg[a] = (reg[b] & 0xFFFFFFFF) / (reg[c] & 0xFFFFFFFF);
         break;
       case OP_NOT:
         reg[a] = ~(reg[b] & reg[c]);
@@ -244,14 +257,25 @@ void SpinCycle(uint32_t *pa) {
         /* NOTE: 0 refers to the special Platter Array 0 */
         /* don't bother copy if we're jumping within the same array */
         if (reg[b] != 0 && ((uint32_t*)reg[b]) != byte_code) {
+          for (int i = 1; i < byte_code[0]; i++) {
+            if (native_code[i] != NULL) {
+              /* free each piece of V8 native code so we dont orphane them */
+              v8::internal::OS::Free((uint8_t*)native_code[i], 0x1000);
+            }
+          }
+          free(native_code);
           free(byte_code);
           byte_code = (uint32_t*)malloc(
               (((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t));
+          if (byte_code == NULL) {
+            printf("ERROR: couldn't allocate new memory (%x) (size: %x)\n", byte_code, (((uint32_t*)reg[b])[0] + 1));
+            exit(-1);
+          }
           memcpy(
               byte_code,
               ((uint32_t*)reg[b]),
               ((((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t)));
-          native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
+          native_code = (NativeCode*)calloc((byte_code[0] + 1), sizeof(uint32_t));
         }
         /* subtract 1 since we'll increment below */
         ip = (reg[c] - 1);
@@ -266,6 +290,8 @@ void SpinCycle(uint32_t *pa) {
     }
     ip++;
   }
+
+  free(native_code);
 
   /* free the original platter array */
   /* TODO(cskau): Is this a good idea? (Double free, not our memory, ..) */
