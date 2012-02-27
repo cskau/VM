@@ -187,6 +187,14 @@ NativeCode compile() {
         __ mul(edx);
         __ mov(ExternalOperand(&reg[a]), eax); 
         break;  
+      case OP_DIV:
+        // edx = 0 when dividing
+        __ mov(edx, Immediate(0));
+        __ mov(eax, ExternalOperand(&reg[b]));
+        __ mov(ecx, ExternalOperand(&reg[c]));
+        __ div(ecx);
+        __ mov(ExternalOperand(&reg[a]), eax);
+        break; 
       case OP_NOT:
         __ mov(eax, ExternalOperand(&reg[b]));
         if (b != c) {
