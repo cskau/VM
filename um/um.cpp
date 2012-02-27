@@ -176,13 +176,6 @@ NativeCode compile() {
       __ mul(edx);
       __ mov(ExternalOperand(&reg[a]), eax); 
       break;
-    case OP_DIV:
-      printf("b: %u - c: %u \n", reg[b], reg[c]);
-      __ mov(eax, ExternalOperand(&reg[b]));
-      __ mov(edx, ExternalOperand(&reg[c]));
-      __ div(eax);
-      //__ mov(ExternalOperand(&reg[a]), eax);
-      break;
     default:
       return NULL;
   }
