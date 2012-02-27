@@ -162,12 +162,15 @@ NativeCode compile() {
         skip = Label();
         __ mov(eax, ExternalOperand(&reg[c]));
         __ test(eax, eax);
+        //__ cmov(zero, ExternalOperand(&reg[a]), ExternalOperand(&reg[b])); // TODO(cskau): useful ?
+        /**/
         __ j(zero, &skip, Label::kNear);
         if (b != c) {
           __ mov(eax, ExternalOperand(&reg[b]));
         }
         __ mov(ExternalOperand(&reg[a]), eax);
         __ bind(&skip);
+        /**/
         break;
       case OP_ADD:
         __ mov(eax, ExternalOperand(&reg[b]));
@@ -177,6 +180,19 @@ NativeCode compile() {
           __ add(eax, ExternalOperand(&reg[c]));
         }
         __ mov(ExternalOperand(&reg[a]), eax);
+        break;
+      case OP_NOT:
+        __ mov(eax, ExternalOperand(&reg[b]));
+        if (b != c) {
+          __ and_(eax, ExternalOperand(&reg[c]));
+        }
+        __ not_(eax);
+        __ mov(ExternalOperand(&reg[a]), eax);
+        break;
+      case OP_ORT:
+        __ mov(
+            ExternalOperand(&reg[(byte_code[(ip_tmp + 1)] & OA_MASK) >> 25]),
+            Immediate((byte_code[(ip_tmp + 1)] & OV_MASK)));
         break;
       default:
         if (assembler.pc_offset() == 0) {
