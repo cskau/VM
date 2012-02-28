@@ -135,6 +135,11 @@ uint32_t * LoadPlatterArrayOrDie(char *fname) {
 }
 
 void op_ara() {
+  // Load values. Might be messed with
+  op = (byte_code[(ip + 1)] & OP_MASK);
+  a = (byte_code[(ip + 1)] & RA_MASK) >> 6;
+  b = (byte_code[(ip + 1)] & RB_MASK) >> 3;
+  c = (byte_code[(ip + 1)] & RC_MASK);
   /* TODO(cskau): invalidate native code cache on write to 0 */
   /*
   if (reg[a] == 0) {
@@ -146,6 +151,10 @@ void op_ara() {
 }
 
 void op_ldp() {
+  op = (byte_code[(ip + 1)] & OP_MASK);
+  a = (byte_code[(ip + 1)] & RA_MASK) >> 6;
+  b = (byte_code[(ip + 1)] & RB_MASK) >> 3;
+  c = (byte_code[(ip + 1)] & RC_MASK);
   /* NOTE: 0 refers to the special Platter Array 0 */
   /* don't bother copy if we're jumping within the same array */
   if (reg[b] != 0 && ((uint32_t*)reg[b]) != byte_code) {
@@ -160,7 +169,8 @@ void op_ldp() {
     byte_code = (uint32_t*)malloc(
         (((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t));
     if (byte_code == NULL) {
-      printf("ERROR: couldn't allocate new memory (%x) (size: %x)\n", byte_code, (((uint32_t*)reg[b])[0] + 1));
+      printf("ERROR: couldn't allocate new memory (%x) (size: %x)\n", 
+          (uint32_t)byte_code, (((uint32_t*)reg[b])[0] + 1));
       exit(-1);
     }
     memcpy(
@@ -213,12 +223,22 @@ NativeCode compile() {
         __ mov(eax, Operand(eax, ecx, times_4, 4));
         __ mov(ExternalOperand(&reg[a]), eax);
         break;
-      /*
       case OP_ARA:
-        /* simply delegate by calling C function * /
+        skip = Label();
+        __ mov(eax, ExternalOperand(&reg[a])); // array
+        __ test(eax, eax); // array != 0 ?
+        __ j(not_zero, &skip, Label::kNear);
+        // simply delegate by calling C function
         __ mov(eax, Immediate(reinterpret_cast<byte*>(op_ara)));
         __ call(eax);
-      */
+        // If we write to 0 native is now invalid
+        __ inc(ExternalOperand(&ip));
+        __ ret(0);
+        __ bind(&skip);
+        __ mov(ecx, ExternalOperand(&reg[b])); // index
+        __ mov(edx, ExternalOperand(&reg[c])); // value
+        __ mov(Operand(eax, ecx, times_4, 4), edx);
+        break;
       case OP_ADD:
         __ mov(eax, ExternalOperand(&reg[b]));
         if (b == c) {
@@ -237,7 +257,6 @@ NativeCode compile() {
       case OP_DIV:
         __ mov(eax, ExternalOperand(&reg[b]));
         __ mov(ecx, ExternalOperand(&reg[c]));
-        //__ mov(edx, Immediate(0));
         __ xor_(edx, edx); // clear edx
         __ div(ecx);
         __ mov(ExternalOperand(&reg[a]), eax);
@@ -250,12 +269,33 @@ NativeCode compile() {
         __ not_(eax);
         __ mov(ExternalOperand(&reg[a]), eax);
         break;
-      /*
+      /**/
       case OP_LDP:
-        /* simply delegate by calling C function * /
+        if (assembler.pc_offset() == 0) {
+          /* if we can't compile even the first instruction .. */
+          return NULL;
+        }
+        skip = Label();
+        __ mov(eax, ExternalOperand(&reg[b]));
+        __ test(eax, eax); // array != 0 ?
+        __ j(not_zero, &skip, Label::kNear);
+        __ mov(eax, ExternalOperand(&native_code));
+        __ mov(ecx, ExternalOperand(&reg[c]));
+        __ mov(eax, Operand(eax, ecx, times_4, 0));
+        __ test(eax, eax);  // Is code at ip compiled?
+        __ j(zero, &skip, Label::kNear);
+        __ jmp(eax);  // jump to code.
+        __ bind(&skip);
+        __ ret(0);
+        /*
+        // simply delegate by calling C function
         __ mov(eax, Immediate(reinterpret_cast<byte*>(op_ldp)));
         __ call(eax);
-      */
+        __ inc(ExternalOperand(&ip));
+        __ ret(0);
+        */
+        break;
+      /**/
       case OP_ORT:
         __ mov(
             ExternalOperand(&reg[(byte_code[(ip_tmp + 1)] & OA_MASK) >> 25]),
@@ -266,11 +306,10 @@ NativeCode compile() {
           /* if we can't compile even the first instruction .. */
           return NULL;
         }
-        //printf("%x\n", op);
         goto finish; /* Yippee-ki-yay ! */
         break;
     }
-    __ add(ExternalOperand(&ip), Immediate(1)); /* increment ip */
+    __ inc(ExternalOperand(&ip));
     ip_tmp++;
   }
   finish:
@@ -304,6 +343,7 @@ void SpinCycle(uint32_t *pa) {
     NativeCode code = native_code[(ip + 1)];
     if (code == NULL) { code = (native_code[(ip + 1)] = compile()); }
     if (code != NULL) { code(); continue; }
+    //printf("MISS: %x\n", op);
     switch (op) {
       case OP_IFM:
         if (reg[c] != 0) {
