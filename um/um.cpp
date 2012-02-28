@@ -162,15 +162,24 @@ NativeCode compile() {
         skip = Label();
         __ mov(eax, ExternalOperand(&reg[c]));
         __ test(eax, eax);
-        //__ cmov(zero, ExternalOperand(&reg[a]), ExternalOperand(&reg[b])); // TODO(cskau): useful ?
-        /**/
         __ j(zero, &skip, Label::kNear);
         if (b != c) {
           __ mov(eax, ExternalOperand(&reg[b]));
         }
         __ mov(ExternalOperand(&reg[a]), eax);
         __ bind(&skip);
-        /**/
+        break;
+      case OP_ARI:
+        skip = Label();
+        __ mov(eax, ExternalOperand(&reg[b])); // array
+        __ mov(ecx, ExternalOperand(&reg[c])); // index
+        __ test(eax, eax); // array != 0 ?
+        __ j(not_zero, &skip, Label::kNear);
+        // TODO(cskau): make sure we invalidate this when we touch byte_code
+        __ mov(eax, Immediate(reinterpret_cast<Address>(byte_code)));
+        __ bind(&skip);
+        __ mov(eax, Operand(eax, ecx, times_4, 4));
+        __ mov(ExternalOperand(&reg[a]), eax);
         break;
       case OP_ADD:
         __ mov(eax, ExternalOperand(&reg[b]));
@@ -179,6 +188,20 @@ NativeCode compile() {
         } else {
           __ add(eax, ExternalOperand(&reg[c]));
         }
+        __ mov(ExternalOperand(&reg[a]), eax);
+        break;
+      case OP_MUL:
+        __ mov(eax, ExternalOperand(&reg[b]));
+        __ mov(edx, ExternalOperand(&reg[c]));
+        __ mul(edx);
+        __ mov(ExternalOperand(&reg[a]), eax);
+        break;
+      case OP_DIV:
+        __ mov(eax, ExternalOperand(&reg[b]));
+        __ mov(ecx, ExternalOperand(&reg[c]));
+        //__ mov(edx, Immediate(0));
+        __ xor_(edx, edx); // clear edx
+        __ div(ecx);
         __ mov(ExternalOperand(&reg[a]), eax);
         break;
       case OP_NOT:
@@ -199,6 +222,7 @@ NativeCode compile() {
           /* if we can't compile even the first instruction .. */
           return NULL;
         }
+        printf("%x\n", op);
         goto finish; /* Yippee-ki-yay ! */
         break;
     }
