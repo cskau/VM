@@ -134,11 +134,43 @@ uint32_t * LoadPlatterArrayOrDie(char *fname) {
   return pa;
 }
 
-void ifm() {
-  if (reg[c] != 0) {
-    reg[a] = reg[b];
+void op_ara() {
+  /* TODO(cskau): invalidate native code cache on write to 0 */
+  /*
+  if (reg[a] == 0) {
+    free(native_code);
+    native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
   }
-  ip++;
+  */
+  (reg[a] == 0 ? byte_code : (uint32_t*)reg[a])[(reg[b] + 1)] = reg[c];
+}
+
+void op_ldp() {
+  /* NOTE: 0 refers to the special Platter Array 0 */
+  /* don't bother copy if we're jumping within the same array */
+  if (reg[b] != 0 && ((uint32_t*)reg[b]) != byte_code) {
+    for (int i = 1; i < byte_code[0]; i++) {
+      if (native_code[i] != NULL) {
+        /* free each piece of V8 native code so we dont orphane them */
+        v8::internal::OS::Free((uint8_t*)native_code[i], 0x1000);
+      }
+    }
+    free(native_code);
+    free(byte_code);
+    byte_code = (uint32_t*)malloc(
+        (((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t));
+    if (byte_code == NULL) {
+      printf("ERROR: couldn't allocate new memory (%x) (size: %x)\n", byte_code, (((uint32_t*)reg[b])[0] + 1));
+      exit(-1);
+    }
+    memcpy(
+        byte_code,
+        ((uint32_t*)reg[b]),
+        ((((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t)));
+    native_code = (NativeCode*)calloc((byte_code[0] + 1), sizeof(uint32_t));
+  }
+  /* subtract 1 since we'll increment below */
+  ip = (reg[c] - 1);
 }
 
 NativeCode compile() {
@@ -181,6 +213,12 @@ NativeCode compile() {
         __ mov(eax, Operand(eax, ecx, times_4, 4));
         __ mov(ExternalOperand(&reg[a]), eax);
         break;
+      /*
+      case OP_ARA:
+        /* simply delegate by calling C function * /
+        __ mov(eax, Immediate(reinterpret_cast<byte*>(op_ara)));
+        __ call(eax);
+      */
       case OP_ADD:
         __ mov(eax, ExternalOperand(&reg[b]));
         if (b == c) {
@@ -212,6 +250,12 @@ NativeCode compile() {
         __ not_(eax);
         __ mov(ExternalOperand(&reg[a]), eax);
         break;
+      /*
+      case OP_LDP:
+        /* simply delegate by calling C function * /
+        __ mov(eax, Immediate(reinterpret_cast<byte*>(op_ldp)));
+        __ call(eax);
+      */
       case OP_ORT:
         __ mov(
             ExternalOperand(&reg[(byte_code[(ip_tmp + 1)] & OA_MASK) >> 25]),
@@ -222,7 +266,7 @@ NativeCode compile() {
           /* if we can't compile even the first instruction .. */
           return NULL;
         }
-        printf("%x\n", op);
+        //printf("%x\n", op);
         goto finish; /* Yippee-ki-yay ! */
         break;
     }
@@ -270,14 +314,7 @@ void SpinCycle(uint32_t *pa) {
         reg[a] = (reg[b] == 0 ? byte_code : (uint32_t*)reg[b])[(reg[c] + 1)];
         break;
       case OP_ARA:
-        /* TODO(cskau): invalidate native code cache on write to 0 */
-        /*
-        if (reg[a] == 0) {
-          free(native_code);
-          native_code = (NativeCode*)calloc(byte_code[0], sizeof(uint32_t));
-        }
-        */
-        (reg[a] == 0 ? byte_code : (uint32_t*)reg[a])[(reg[b] + 1)] = reg[c];
+        op_ara();
         break;
       case OP_ADD:
         reg[a] = (reg[b] + reg[c]) & 0xFFFFFFFF;  /* 2^32 */
@@ -309,31 +346,7 @@ void SpinCycle(uint32_t *pa) {
         reg[c] = ((ch = getchar()) != EOF) ? ch : 0xFF;
         break;
       case OP_LDP:
-        /* NOTE: 0 refers to the special Platter Array 0 */
-        /* don't bother copy if we're jumping within the same array */
-        if (reg[b] != 0 && ((uint32_t*)reg[b]) != byte_code) {
-          for (int i = 1; i < byte_code[0]; i++) {
-            if (native_code[i] != NULL) {
-              /* free each piece of V8 native code so we dont orphane them */
-              v8::internal::OS::Free((uint8_t*)native_code[i], 0x1000);
-            }
-          }
-          free(native_code);
-          free(byte_code);
-          byte_code = (uint32_t*)malloc(
-              (((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t));
-          if (byte_code == NULL) {
-            printf("ERROR: couldn't allocate new memory (%x) (size: %x)\n", byte_code, (((uint32_t*)reg[b])[0] + 1));
-            exit(-1);
-          }
-          memcpy(
-              byte_code,
-              ((uint32_t*)reg[b]),
-              ((((uint32_t*)reg[b])[0] + 1) * sizeof(uint32_t)));
-          native_code = (NativeCode*)calloc((byte_code[0] + 1), sizeof(uint32_t));
-        }
-        /* subtract 1 since we'll increment below */
-        ip = (reg[c] - 1);
+        op_ldp();
         break;
       case OP_ORT:
         reg[(byte_code[(ip + 1)] & OA_MASK) >> 25] =
