@@ -209,43 +209,42 @@ VMLDSB *LoadDSBOrDie(char *fname) {
 
 void PrintValue(VMLDSB* dsb, DSValue *value, char* seperator) {
   if (value) {
-    switch (value->type) {
-      case NIL:
-        printf("nil");
-        break;
-      case BOOL:
-        printf("%s", value->value ? "#t" : "#f");
-        break;
-      case INT:
-        printf("%i", value->value);
-        break;
-      case CHAR:
-        printf("#\\%c", value->code);
-        break;
-      case STR:
-        printf("\"%s\"", dsb->string_pool[value->index].string);
-        break;
-      case SYM:
-        printf("%u", value->index);
-        break;
-      case CLOSE_FLAT:
-        printf("close-flat (%u) (", value->index);
-        /*PrintVector(value->env_lex, 1, "");*/
-        printf("...)");
-        break;
-      case CLOSE_DEEP:
-        printf("close-deep (%u) (", value->index);
-        /*PrintVector(value->env_lex, 1, "");*/
-        printf("...)");
-        break;
-      case VOID:
-        printf("void");
-        break;
-      case FUNC_LIB:
-        printf("lib(%u)", value->index);
-        break;
-      default:
-        printf("Unimplemented printing method: %i", value->type);
+    if (IsUnboxedInt(value)) {
+      printf("%i", GetUnboxedInt(value));
+    } else {
+      switch (value->type) {
+        case NIL:
+          printf("nil");
+          break;
+        case BOOL:
+          printf("%s", value->value ? "#t" : "#f");
+          break;
+        case CHAR:
+          printf("#\\%c", value->code);
+          break;
+        case STR:
+          printf("\"%s\"", dsb->string_pool[value->index].string);
+          break;
+        case SYM:
+          printf("%u", value->index);
+          break;
+        case CLOSE_FLAT:
+          printf("close-flat (%u) (", value->index);
+          printf("...)");
+          break;
+        case CLOSE_DEEP:
+          printf("close-deep (%u) (", value->index);
+          printf("...)");
+          break;
+        case VOID:
+          printf("void");
+          break;
+        case FUNC_LIB:
+          printf("lib(%u)", value->index);
+          break;
+        default:
+          printf("Unimplemented printing method: %i", value->type);
+      }
     }
   } else {
     printf("uninitialized value");
@@ -318,56 +317,56 @@ DSValue *Lib(uint16_t i, DSVector *aux_vec) {
       CheckArityOrDie(1, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->type == INT ? 1 : 0),
+          (IsUnboxedInt(aux_vec->values[0]) ? 1 : 0),
           NULL);
       break;
     case LIB_PLUS:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value + aux_vec->values[1]->value),
+          (GetUnboxedInt(aux_vec->values[0]) + GetUnboxedInt(aux_vec->values[1])),
           NULL);
       break;
     case LIB_MINUS:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value - aux_vec->values[1]->value),
+          (GetUnboxedInt(aux_vec->values[0]) - GetUnboxedInt(aux_vec->values[1])),
           NULL);
       break;
     case LIB_TIMES:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value * aux_vec->values[1]->value),
+          (GetUnboxedInt(aux_vec->values[0]) * GetUnboxedInt(aux_vec->values[1])),
           NULL);
       break;
     case LIB_QUOTIENT:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value / aux_vec->values[1]->value),
+          (GetUnboxedInt(aux_vec->values[0]) / GetUnboxedInt(aux_vec->values[1])),
           NULL);
       break;
     case LIB_REMAINDER:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           INT,
-          (aux_vec->values[0]->value % aux_vec->values[1]->value),
+          (GetUnboxedInt(aux_vec->values[0]) % GetUnboxedInt(aux_vec->values[1])),
           NULL);
       break;
     case LIB_LT:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value < aux_vec->values[1]->value),
+          (aux_vec->values[0] < aux_vec->values[1]),
           NULL);
       break;
     case LIB_LE:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value <= aux_vec->values[1]->value),
+          (aux_vec->values[0] <= aux_vec->values[1]),
           NULL);
       break;
     case LIB_EQ:
@@ -375,21 +374,21 @@ DSValue *Lib(uint16_t i, DSVector *aux_vec) {
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value == aux_vec->values[1]->value),
+          (aux_vec->values[0] == aux_vec->values[1]),
           NULL);
       break;
     case LIB_GE:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value >= aux_vec->values[1]->value),
+          (aux_vec->values[0] >= aux_vec->values[1]),
           NULL);
       break;
     case LIB_GT:
       CheckArityOrDie(2, aux_vec->length);
       return CreateValue(
           BOOL,
-          (aux_vec->values[0]->value > aux_vec->values[1]->value),
+          (aux_vec->values[0] > aux_vec->values[1]),
           NULL);
       break;
     case LIB_BOOLEANQ:
@@ -450,9 +449,7 @@ DSVector *GetVector(
 
 void CheckArityOrDie(int want, int got) {
   if (want != got && want != -1) {
-    printf(
-        "Error: Arity mismatch!\n  Want %i, but got %i\n",
-        want, got);
+    printf("Error: Arity mismatch!\n  Want %i, but got %i\n", want, got);
     exit(-1);
   }
 }
@@ -625,9 +622,7 @@ void Run(VMLDSB *vmldsb) {
             goto op_return;
           } else {
             printf("Error: Calling non-close value.\n");
-            /**/
             exit(-1);
-            /**/
           }
         }
         break;

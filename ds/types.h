@@ -52,12 +52,26 @@ struct DSVector {
   }
 };
 
+int IsUnboxedInt(DSValue *value) {
+  return ((int32_t)value) & 0x1;
+}
+
+int32_t GetUnboxedInt(DSValue *value) {
+  return ((int32_t)value - 1) / 2;
+}
+
 DSValue *CreateValue(enum ValueTypes type, uint32_t value, DSVector *env_lex) {
+  /* unboxed int */
+  if (type == INT) {
+    if (value & 0x40000000) {
+      printf("Value overflows sign: %i\n", value);
+      exit(-1);
+    }
+    return ((int32_t)value * 2) + 1;
+  }
   DSValue *new_value = malloc(sizeof(DSValue));
   new_value->type = type;
-  if (new_value->type == INT) {
-    new_value->value = (int32_t)value;
-  } else if (new_value->type == CHAR) {
+  if (new_value->type == CHAR) {
     new_value->code = (char)value;
   } else {
     new_value->index = (uint32_t)value;
@@ -75,7 +89,8 @@ DSValue *CreateValue(enum ValueTypes type, uint32_t value, DSVector *env_lex) {
 };
 
 DSValue *CopyValue(DSValue *old_value) {
-  if (old_value == NULL) {
+  /* NULL or unboxed int ? */
+  if (old_value == NULL || IsUnboxedInt(old_value)) {
     return old_value;
   }
   DSValue *new_value = malloc(sizeof(DSValue));
@@ -95,9 +110,12 @@ DSVector *CreateVector(unsigned int length) {
 
 DSVector *CopyVector(DSVector *old_vector, unsigned int depth) {
   unsigned int i = 0;
+  /* TODO(cskau): should this be here ?? */
+  /*
   if (old_vector == NULL) {
     return old_vector;
   }
+  */
   DSVector *new_vector = malloc(sizeof(DSVector));
   if (old_vector == NULL) {
     new_vector->length = 0;
