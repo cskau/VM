@@ -49,7 +49,7 @@ struct DSVector {
   union {
     DSValue **values;
     DSVector **vectors;
-  }
+  };
 };
 
 int IsUnboxedInt(DSValue *value) {
