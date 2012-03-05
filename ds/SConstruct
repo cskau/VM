@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+# coding: UTF-8
+
+AddOption(
+    '--debug-build',
+    action='store_true',
+    help='debug build',
+    default=False)
+
+env = Environment()
+
+# build in debug mode ?
+if GetOption('debug_build'):
+  env.Append(CCFLAGS=['-Wall', '-g', '-DDEBUG'])
+else:
+  env.Append(CCFLAGS=['-O3'])
+
+env.Program(
+    'dsvm',
+    [
+      'dsvm.c',
+      'types.h'
+    ])
